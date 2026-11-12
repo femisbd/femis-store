@@ -3,9 +3,10 @@ import { Photo } from "@/components/Photo";
 import { ProductCard } from "@/components/ProductCard";
 import { Shell } from "@/components/Shell";
 import { config, taka } from "@/lib/config";
-import { categories, products } from "@/lib/products";
+import { getCatalog } from "@/lib/catalog";
 
-export default function Home() {
+export default async function Home() {
+  const { categories, products } = await getCatalog();
   const bestsellers = products.filter((p) => p.bestseller).slice(0, 4);
   return (
     <Shell>

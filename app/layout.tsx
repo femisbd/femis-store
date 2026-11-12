@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { CartDrawer } from "@/components/CartDrawer";
 import { CartProvider } from "@/components/cart-context";
+import { getCatalog } from "@/lib/catalog";
 // Fonts are self-hosted (served from our own domain), which is faster than loading them from Google.
 import "@fontsource/cormorant-garamond/latin-500.css";
 import "@fontsource/jost/latin-300.css";
@@ -15,11 +16,12 @@ export const metadata: Metadata = {
   description: "Clutches, purses and shoes for weddings, parties and every evening in between. Delivery across Bangladesh with cash on delivery.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const { products } = await getCatalog();
   return (
     <html lang="en">
       <body>
-        <CartProvider>
+        <CartProvider products={products}>
           {children}
           <CartDrawer />
         </CartProvider>

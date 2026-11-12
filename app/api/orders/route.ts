@@ -1,4 +1,6 @@
+import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
+import { getCatalog } from "@/lib/catalog";
 import { detail, totals, validateOrder, type OrderRequest } from "@/lib/order";
 import { rpc, supabaseConfigured } from "@/lib/supabase";
 
@@ -32,6 +34,8 @@ export async function POST(request: Request) {
           tracking: {},
         },
       });
+      // Stock changed: refresh the cached catalogue in the background.
+      if (result.ok) revalidateTag("catalog", "max");
       return NextResponse.json(result, { status: result.ok ? 200 : 422 });
     } catch (err) {
       console.error(err);
@@ -43,7 +47,7 @@ export async function POST(request: Request) {
   }
 
   // DEMO MODE: used only when the Supabase settings are missing (local preview). Nothing is saved.
-  const d = detail(lines);
+  const d = detail(lines, (await getCatalog()).products);
   const area = body.area === "outside" ? "outside" : "inside";
   const t = totals(d, area, !!body.addOn);
   const errors = validateOrder(body, d, t);

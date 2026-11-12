@@ -7,9 +7,10 @@ import { Login } from "@/components/admin/Login";
 import { OrderPanel } from "@/components/admin/OrderPanel";
 import { OrdersView } from "@/components/admin/OrdersView";
 import { PreordersView } from "@/components/admin/PreordersView";
+import { ProductsView } from "@/components/admin/ProductsView";
 import { ROLE_LABEL, supabase, type Role } from "@/lib/supabase-browser";
 
-type View = "orders" | "preorders";
+type View = "orders" | "preorders" | "products";
 
 export default function AdminPage() {
   const [session, setSession] = useState<Session | null>(null);
@@ -69,6 +70,7 @@ export default function AdminPage() {
           <nav className="adm-tabs" aria-label="Admin">
             <button aria-pressed={view === "orders"} onClick={() => setView("orders")}>Orders</button>
             {role !== "packing" && <button aria-pressed={view === "preorders"} onClick={() => setView("preorders")}>Pre-orders</button>}
+            {role === "owner" && <button aria-pressed={view === "products"} onClick={() => setView("products")}>Products</button>}
           </nav>
         </div>
         <div className="adm-top-right">
@@ -77,11 +79,9 @@ export default function AdminPage() {
         </div>
       </header>
       <main className="adm-main">
-        {view === "orders" ? (
-          <OrdersView role={role} onOpen={setOpenOrder} refreshKey={refreshKey} />
-        ) : (
-          <PreordersView onOpen={setOpenOrder} refreshKey={refreshKey} />
-        )}
+        {view === "orders" && <OrdersView role={role} onOpen={setOpenOrder} refreshKey={refreshKey} />}
+        {view === "preorders" && <PreordersView onOpen={setOpenOrder} refreshKey={refreshKey} />}
+        {view === "products" && role === "owner" && <ProductsView />}
       </main>
       {openOrder && <OrderPanel orderNo={openOrder} role={role} onClose={() => setOpenOrder(null)} onChanged={refresh} />}
     </>

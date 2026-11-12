@@ -14,17 +14,11 @@ This is stage 1 of the build: the storefront. It runs with SAMPLE products and d
 | What | File |
 |---|---|
 | Delivery charges, free delivery amount, add-on, WhatsApp and bKash numbers, exchange line | `lib/config.ts` |
-| Products, prices, colours, sizes, stock, pre-order settings | `lib/products.ts` |
+| Products, prices, colours, sizes, stock, pre-order settings, photos | Admin panel, Products tab |
 | Colours and fonts for the whole site | top of `app/globals.css` |
 | Home page text and hero | `app/page.tsx` |
 
-To add a product photo: put the file in `public/products/` and add its path to the product's
-`images` list in `lib/products.ts`, for example `images: ["/products/bridal-01-a.jpg"]`.
-
-## How a product becomes a pre-order
-
-In `lib/products.ts`, add `preorder: { shipDays: "15–20", advance: 500 }` to the product.
-Use `advance: 0` for a pre-order with no advance. Remove the line and set `stock` for an available product.
+Without the Supabase settings the site runs in demo mode with the sample products in `lib/products.ts`.
 
 ## Database (Supabase)
 
@@ -33,7 +27,8 @@ The database setup is in `supabase/`:
 1. `supabase/migrations/0001_init.sql`: tables, security rules and the order functions. Run once.
 2. `supabase/seed_sample_products.sql`: 15 SAMPLE products for testing. Optional.
 3. `supabase/migrations/0002_admin.sql`: admin panel rules. Run once, after file 1.
-4. `supabase/add_staff_member.sql`: run once per staff member to give them admin access.
+4. `supabase/migrations/0003_products_admin.sql`: product photo storage and product rules. Run once, after file 3.
+5. `supabase/add_staff_member.sql`: run once per staff member to give them admin access.
 
 To run a file: open the Supabase project, go to SQL Editor, click New query, paste the whole file, click Run.
 
@@ -52,13 +47,14 @@ The site needs two settings (see `.env.example`). Without them it runs in demo m
 - Admin panel at `/admin`: staff login, orders by status with counts, search by order number or phone,
   order details with call and WhatsApp buttons, customer's past delivery record, bKash advance check,
   status changes with notes and history, address and staff note editing, and the pre-order sourcing list.
+- Products tab (owner only): add and edit products, prices, stock, pre-order and advance settings, colours,
+  sizes, photos (resized automatically), "Complete the look", bestsellers, hide or show, and private costs.
+  The store reads products from the database and shows changes straight after saving.
 - Staff roles: owner and order staff see everything; packing staff see only "To pack" and "Packed"
   and can only mark confirmed orders as packed. Prices and totals can never be edited.
 
 ## What is NOT built yet
 
-- Product, stock and settings editing in the admin panel.
-- The storefront still shows products from `lib/products.ts`. The database has its own copy of the
-  same sample products. The admin panel stage switches the storefront to read from the database.
+- Settings editing in the admin panel (delivery charges, add-on, bKash and WhatsApp numbers are still in `lib/config.ts`).
 - Steadfast booking, SMS, Meta Conversions API and the profit dashboard.
 - Policy pages are waiting for the policy text.

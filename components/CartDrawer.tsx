@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useEffect } from "react";
 import { config, taka } from "@/lib/config";
-import { getProduct } from "@/lib/products";
 import { useCart } from "./cart-context";
 import { FreeDeliveryBar } from "./FreeDeliveryBar";
 import { Photo } from "./Photo";
@@ -27,7 +26,7 @@ export function CartDrawer() {
   // "Complete the look": first paired product that is not already in the cart.
   const inCart = new Set(cart.lines.map((l) => l.slug));
   const suggestion = cart.lines
-    .map((l) => (l.product.pairsWith ? getProduct(l.product.pairsWith) : undefined))
+    .map((l) => (l.product.pairsWith ? cart.getProduct(l.product.pairsWith) : undefined))
     .find((p) => p && !inCart.has(p.slug) && (p.preorder || p.stock > 0));
 
   return (

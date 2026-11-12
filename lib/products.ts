@@ -1,6 +1,5 @@
-// SAMPLE DATA. Every product below is a placeholder so the site can run before
-// the real catalogue is entered. Names, prices, colours and shipping days are NOT real.
-// Later this file is replaced by the database (Supabase) and the admin panel.
+// Product types and helpers. The real catalogue comes from the database (lib/catalog.ts).
+// The SAMPLE data below is used only in demo mode, when the Supabase settings are missing.
 
 export type Category = { slug: string; name: string; group: "clutches" | "purses" | "shoes" };
 
@@ -18,10 +17,11 @@ export type Product = {
   slug: string;
   name: string;
   category: string; // category slug
+  categoryName: string;
   price: number;
   colours: string[];
   sizes?: string[]; // shoes only
-  images: string[]; // paths under /public, e.g. "/products/bridal-01-a.jpg". Empty = placeholder box.
+  images: string[]; // full photo URLs. Empty = placeholder box.
   details: string;
   stock: number; // ignored for pre-order products
   preorder?: { shipDays: string; advance: number }; // advance 0 = no advance needed
@@ -32,11 +32,11 @@ export type Product = {
 const SHOE_SIZES = ["36", "37", "38", "39", "40"];
 const DETAILS = "[MATERIAL, SIZE, STRAP, CLOSURE AND WHAT FITS INSIDE]";
 
-function p(x: Omit<Product, "images" | "details" | "colours"> & Partial<Product>): Product {
-  return { images: [], details: DETAILS, colours: ["Colour 1", "Colour 2", "Colour 3"], ...x };
+function p(x: Omit<Product, "images" | "details" | "colours" | "categoryName"> & Partial<Product>): Product {
+  return { images: [], details: DETAILS, colours: ["Colour 1", "Colour 2", "Colour 3"], categoryName: categories.find((c) => c.slug === x.category)?.name ?? "", ...x };
 }
 
-export const products: Product[] = [
+const sampleProducts: Product[] = [
   p({ slug: "sample-bridal-clutch-01", name: "Sample Bridal Clutch 01", category: "bridal-clutch", price: 2800, stock: 0, preorder: { shipDays: "15–20", advance: 500 }, pairsWith: "sample-heels-01", bestseller: true }),
   p({ slug: "sample-bridal-clutch-02", name: "Sample Bridal Clutch 02", category: "bridal-clutch", price: 2600, stock: 6, pairsWith: "sample-heels-01" }),
   p({ slug: "sample-bridal-clutch-03", name: "Sample Bridal Clutch 03", category: "bridal-clutch", price: 3200, stock: 0, preorder: { shipDays: "15–20", advance: 0 }, pairsWith: "sample-heels-02" }),
@@ -54,28 +54,29 @@ export const products: Product[] = [
   p({ slug: "sample-sneakers-02", name: "Sample Sneakers 02", category: "sneakers", price: 2300, stock: 0, sizes: SHOE_SIZES, preorder: { shipDays: "20–25", advance: 0 }, pairsWith: "sample-purse-02" }),
 ];
 
-export const getProduct = (slug: string) => products.find((x) => x.slug === slug);
-export const getCategory = (slug: string) => categories.find((c) => c.slug === slug);
-export const categoryName = (slug: string) => getCategory(slug)?.name ?? "";
+export type Catalog = { categories: Category[]; products: Product[] };
+export const sampleCatalog: Catalog = { categories, products: sampleProducts };
+
+export const findProduct = (products: Product[], slug: string) => products.find((x) => x.slug === slug);
 export const isAvailable = (x: Product) => !!x.preorder || x.stock > 0;
 
 export type Listing = { slug: string; title: string; intro: string; products: Product[] };
 
-const groups: Record<string, { title: string; filter: (x: Product) => boolean }> = {
+const groups: Record<string, { title: string; filter: (x: Product, c: Catalog) => boolean }> = {
   all: { title: "All pieces", filter: () => true },
-  clutches: { title: "Clutches", filter: (x) => getCategory(x.category)?.group === "clutches" },
-  purses: { title: "Purses", filter: (x) => getCategory(x.category)?.group === "purses" },
-  shoes: { title: "Shoes", filter: (x) => getCategory(x.category)?.group === "shoes" },
+  clutches: { title: "Clutches", filter: (x, c) => c.categories.find((k) => k.slug === x.category)?.group === "clutches" },
+  purses: { title: "Purses", filter: (x, c) => c.categories.find((k) => k.slug === x.category)?.group === "purses" },
+  shoes: { title: "Shoes", filter: (x, c) => c.categories.find((k) => k.slug === x.category)?.group === "shoes" },
   "pre-order": { title: "Pre-order", filter: (x) => !!x.preorder },
 };
 
-export const listingSlugs = [...Object.keys(groups), ...categories.map((c) => c.slug)];
+export const listingSlugs = (c: Catalog) => [...Object.keys(groups), ...c.categories.map((k) => k.slug)];
 
-export function getListing(slug: string): Listing | undefined {
+export function getListing(c: Catalog, slug: string): Listing | undefined {
   const intro = "[ONE LINE ABOUT THIS COLLECTION]";
   const g = groups[slug];
-  if (g) return { slug, title: g.title, intro, products: products.filter(g.filter) };
-  const c = getCategory(slug);
-  if (c) return { slug, title: c.name, intro, products: products.filter((x) => x.category === slug) };
+  if (g) return { slug, title: g.title, intro, products: c.products.filter((x) => g.filter(x, c)) };
+  const k = c.categories.find((x) => x.slug === slug);
+  if (k) return { slug, title: k.name, intro, products: c.products.filter((x) => x.category === slug) };
   return undefined;
 }

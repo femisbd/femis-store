@@ -5,24 +5,31 @@ import { Gallery } from "@/components/Gallery";
 import { ProductBuy } from "@/components/ProductBuy";
 import { ProductCard } from "@/components/ProductCard";
 import { Shell } from "@/components/Shell";
-import { categoryName, getProduct, isAvailable, products } from "@/lib/products";
+import { getCatalog } from "@/lib/catalog";
+import { findProduct, isAvailable } from "@/lib/products";
 
-export function generateStaticParams() {
-  return products.map((p) => ({ slug: p.slug }));
+// New products added in the admin get their page built on the first visit, then served as a fast static page.
+export const ensureStatic = "navigation";
+
+export async function generateStaticParams() {
+  const { products } = await getCatalog();
+  // At least one entry is required at build time, even before any product exists.
+  return products.length ? products.map((p) => ({ slug: p.slug })) : [{ slug: "coming-soon" }];
 }
 
 export async function generateMetadata(props: PageProps<"/product/[slug]">): Promise<Metadata> {
   const { slug } = await props.params;
-  const product = getProduct(slug);
+  const product = findProduct((await getCatalog()).products, slug);
   return { title: product?.name ?? "Not found" };
 }
 
 export default async function ProductPage(props: PageProps<"/product/[slug]">) {
   const { slug } = await props.params;
-  const product = getProduct(slug);
+  const { products } = await getCatalog();
+  const product = findProduct(products, slug);
   if (!product) notFound();
 
-  const pairCandidate = product.pairsWith ? getProduct(product.pairsWith) : undefined;
+  const pairCandidate = product.pairsWith ? findProduct(products, product.pairsWith) : undefined;
   const pair = pairCandidate && isAvailable(pairCandidate) ? pairCandidate : undefined;
   const related = [
     ...products.filter((p) => p.category === product.category && p.slug !== product.slug),
@@ -34,7 +41,7 @@ export default async function ProductPage(props: PageProps<"/product/[slug]">) {
       <div className="wrap" style={{ paddingTop: 48 }}>
         <nav aria-label="Breadcrumb" className="crumbs">
           <Link href="/">Home</Link><span aria-hidden="true">/</span>
-          <Link href={`/category/${product.category}`}>{categoryName(product.category)}</Link><span aria-hidden="true">/</span>
+          <Link href={`/category/${product.category}`}>{product.categoryName}</Link><span aria-hidden="true">/</span>
           <span aria-current="page">{product.name}</span>
         </nav>
       </div>

@@ -1,15 +1,15 @@
 import { config, deliveryCharge, type Area } from "./config";
-import { getProduct, type Product } from "./products";
+import { findProduct, type Product } from "./products";
 
 export type CartLine = { slug: string; colour: string; size?: string; qty: number };
 export type DetailedLine = CartLine & { key: string; product: Product; lineTotal: number };
 
 export const lineKey = (l: Pick<CartLine, "slug" | "colour" | "size">) => `${l.slug}|${l.colour}|${l.size ?? ""}`;
 
-export function detail(lines: CartLine[]): DetailedLine[] {
+export function detail(lines: CartLine[], products: Product[]): DetailedLine[] {
   const out: DetailedLine[] = [];
   for (const l of lines) {
-    const product = getProduct(l.slug);
+    const product = findProduct(products, l.slug);
     if (!product) continue;
     const qty = Math.max(1, Math.min(20, Math.floor(l.qty) || 1));
     out.push({ ...l, qty, key: lineKey(l), product, lineTotal: product.price * qty });

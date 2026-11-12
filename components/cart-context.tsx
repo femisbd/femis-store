@@ -2,9 +2,12 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { detail, lineKey, type CartLine, type DetailedLine } from "@/lib/order";
+import { findProduct, type Product } from "@/lib/products";
 
 type Cart = {
   ready: boolean;
+  products: Product[];
+  getProduct: (slug: string) => Product | undefined;
   lines: DetailedLine[];
   count: number;
   subtotal: number;
@@ -20,7 +23,7 @@ type Cart = {
 const Ctx = createContext<Cart | null>(null);
 const STORAGE_KEY = "femis-cart-v1";
 
-export function CartProvider({ children }: { children: React.ReactNode }) {
+export function CartProvider({ products, children }: { products: Product[]; children: React.ReactNode }) {
   const [raw, setRaw] = useState<CartLine[]>([]);
   const [ready, setReady] = useState(false);
   const [isOpen, setOpen] = useState(false);
@@ -57,9 +60,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const clear = useCallback(() => setRaw([]), []);
 
   const value = useMemo<Cart>(() => {
-    const lines = detail(raw);
+    const lines = detail(raw, products);
     return {
       ready,
+      products,
+      getProduct: (slug: string) => findProduct(products, slug),
       lines,
       count: lines.reduce((s, l) => s + l.qty, 0),
       subtotal: lines.reduce((s, l) => s + l.lineTotal, 0),
@@ -71,7 +76,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       remove,
       clear,
     };
-  }, [raw, ready, isOpen, add, setQty, remove, clear]);
+  }, [raw, ready, isOpen, add, setQty, remove, clear, products]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
