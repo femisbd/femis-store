@@ -32,6 +32,8 @@ The database setup is in `supabase/`:
 
 1. `supabase/migrations/0001_init.sql`: tables, security rules and the order functions. Run once.
 2. `supabase/seed_sample_products.sql`: 15 SAMPLE products for testing. Optional.
+3. `supabase/migrations/0002_admin.sql`: admin panel rules. Run once, after file 1.
+4. `supabase/add_staff_member.sql`: run once per staff member to give them admin access.
 
 To run a file: open the Supabase project, go to SQL Editor, click New query, paste the whole file, click Run.
 
@@ -47,11 +49,15 @@ The site needs two settings (see `.env.example`). Without them it runs in demo m
 - Orders are saved in the database by `place_order`, which recalculates every price, checks and reduces stock,
   and refuses bad input. Nothing is saved unless every check passes.
 - Order tracking by order number (FM10001) or mobile number shows status only, never name or address.
-- Staff roles in the database: owner, orders, packing (used by the admin panel).
+- Admin panel at `/admin`: staff login, orders by status with counts, search by order number or phone,
+  order details with call and WhatsApp buttons, customer's past delivery record, bKash advance check,
+  status changes with notes and history, address and staff note editing, and the pre-order sourcing list.
+- Staff roles: owner and order staff see everything; packing staff see only "To pack" and "Packed"
+  and can only mark confirmed orders as packed. Prices and totals can never be edited.
 
 ## What is NOT built yet
 
-- Admin panel (the database is ready for it).
+- Product, stock and settings editing in the admin panel.
 - The storefront still shows products from `lib/products.ts`. The database has its own copy of the
   same sample products. The admin panel stage switches the storefront to read from the database.
 - Steadfast booking, SMS, Meta Conversions API and the profit dashboard.
