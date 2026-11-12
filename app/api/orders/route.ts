@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { detail, totals, validateOrder, type OrderRequest } from "@/lib/order";
+import { rpc, supabaseConfigured } from "@/lib/supabase";
 
-// Receives an order from the checkout page.
-// Prices and totals are recalculated here on the server, so a browser can never change a price.
-//
-// TODO (next build stage): save the order to the database (Supabase), reduce stock,
-// send the SMS confirmation, and send the Purchase event to Meta Conversions API.
-// Until then the order is only written to the server log and is NOT stored.
+type PlaceResult = { ok: boolean; errors?: Record<string, string>; order?: unknown };
+
+// Receives an order from the checkout page and saves it with the database function place_order.
+// The database recalculates every price, checks stock and saves everything in one step,
+// so a browser can never change a price or oversell stock.
 export async function POST(request: Request) {
   let body: OrderRequest;
   try {
@@ -14,30 +14,41 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json({ ok: false, errors: { form: "Invalid request." } }, { status: 400 });
   }
+  const lines = Array.isArray(body.lines) ? body.lines.slice(0, 30) : [];
 
-  const lines = detail(Array.isArray(body.lines) ? body.lines.slice(0, 30) : []);
-  const area = body.area === "outside" ? "outside" : "inside";
-  const t = totals(lines, area, !!body.addOn);
-  const errors = validateOrder(body, lines, t);
-
-  for (const l of lines) {
-    const p = l.product;
-    if (!p.preorder && l.qty > p.stock) errors.lines = `${p.name}: only ${p.stock} left in stock.`;
-    if (p.sizes && (!l.size || !p.sizes.includes(l.size))) errors.lines = `${p.name}: please choose a size.`;
-    if (!p.colours.includes(l.colour)) errors.lines = `${p.name}: please choose a colour.`;
+  if (supabaseConfigured) {
+    try {
+      const result = await rpc<PlaceResult>("place_order", {
+        p: {
+          name: body.name,
+          phone: body.phone,
+          address: body.address,
+          area: body.area,
+          add_on: !!body.addOn,
+          trx_id: body.trxId ?? "",
+          note: body.note ?? "",
+          lines: lines.map(({ slug, colour, size, qty }) => ({ slug, colour, size: size ?? null, qty })),
+          // TODO (tracking stage): ad attribution (fbp, fbc, event id) for Meta Conversions API
+          tracking: {},
+        },
+      });
+      return NextResponse.json(result, { status: result.ok ? 200 : 422 });
+    } catch (err) {
+      console.error(err);
+      return NextResponse.json(
+        { ok: false, errors: { form: "We could not save your order. Please try again, or order on WhatsApp." } },
+        { status: 502 },
+      );
+    }
   }
-  if (Object.keys(errors).length) return NextResponse.json({ ok: false, errors }, { status: 422 });
 
-  const id = `FM-${Date.now().toString(36).toUpperCase()}`;
-  const order = {
-    id,
-    createdAt: new Date().toISOString(),
-    customer: { name: body.name.trim(), phone: body.phone.replace(/[\s-]/g, ""), address: body.address.trim(), area },
-    note: (body.note ?? "").slice(0, 500),
-    trxId: t.advance > 0 ? (body.trxId ?? "").trim() : null,
-    items: lines.map((l) => ({ slug: l.slug, name: l.product.name, colour: l.colour, size: l.size ?? null, qty: l.qty, price: l.product.price, preorder: !!l.product.preorder })),
-    totals: t,
-  };
-  console.log("[order received, not stored yet]", JSON.stringify(order));
+  // DEMO MODE: used only when the Supabase settings are missing (local preview). Nothing is saved.
+  const d = detail(lines);
+  const area = body.area === "outside" ? "outside" : "inside";
+  const t = totals(d, area, !!body.addOn);
+  const errors = validateOrder(body, d, t);
+  if (Object.keys(errors).length) return NextResponse.json({ ok: false, errors }, { status: 422 });
+  const order = { id: `DEMO-${Date.now().toString(36).toUpperCase()}`, totals: t };
+  console.warn("[demo mode] order not saved", JSON.stringify(order));
   return NextResponse.json({ ok: true, order });
 }

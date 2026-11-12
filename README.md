@@ -26,15 +26,33 @@ To add a product photo: put the file in `public/products/` and add its path to t
 In `lib/products.ts`, add `preorder: { shipDays: "15–20", advance: 500 }` to the product.
 Use `advance: 0` for a pre-order with no advance. Remove the line and set `stock` for an available product.
 
+## Database (Supabase)
+
+The database setup is in `supabase/`:
+
+1. `supabase/migrations/0001_init.sql`: tables, security rules and the order functions. Run once.
+2. `supabase/seed_sample_products.sql`: 15 SAMPLE products for testing. Optional.
+
+To run a file: open the Supabase project, go to SQL Editor, click New query, paste the whole file, click Run.
+
+The site needs two settings (see `.env.example`). Without them it runs in demo mode and saves nothing:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+
 ## What works now
 
 - Home, category, product (available and pre-order), side cart, checkout, thank-you and tracking pages.
 - Cart saved in the browser, free delivery bar, "Complete the look", checkout add-on.
-- Checkout validates the form and recalculates every price on the server (`app/api/orders/route.ts`).
+- Orders are saved in the database by `place_order`, which recalculates every price, checks and reduces stock,
+  and refuses bad input. Nothing is saved unless every check passes.
+- Order tracking by order number (FM10001) or mobile number shows status only, never name or address.
+- Staff roles in the database: owner, orders, packing (used by the admin panel).
 
 ## What is NOT built yet
 
-- Orders are not stored. `app/api/orders/route.ts` only writes them to the server log.
-- Order tracking only answers the demo code `DEMO`.
-- No admin panel, database, Steadfast booking, SMS, Meta Conversions API or profit dashboard yet.
+- Admin panel (the database is ready for it).
+- The storefront still shows products from `lib/products.ts`. The database has its own copy of the
+  same sample products. The admin panel stage switches the storefront to read from the database.
+- Steadfast booking, SMS, Meta Conversions API and the profit dashboard.
 - Policy pages are waiting for the policy text.

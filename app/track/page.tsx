@@ -5,7 +5,7 @@ import { Shell } from "@/components/Shell";
 import { config } from "@/lib/config";
 
 type Step = { title: string; when: string; state: "done" | "now" | "next" };
-type Result = { found: false } | { found: true; orderId: string; courierCode: string; steps: Step[] };
+type Result = { found: false } | { found: true; orderId: string; courierCode: string | null; steps: Step[] };
 const TAG = { done: "Done", now: "Now", next: "Next" };
 
 export default function TrackPage() {
@@ -21,6 +21,7 @@ export default function TrackPage() {
     setLoading(true);
     try {
       const res = await fetch(`/api/track?q=${encodeURIComponent(q.trim())}`);
+      if (!res.ok) throw new Error();
       setResult(await res.json());
     } catch {
       setError("We could not check right now. Please try again.");
@@ -53,7 +54,7 @@ export default function TrackPage() {
             <div className="track-card">
               <div className="track-head">
                 <span className="serif">Order {result.orderId}</span>
-                <span className="muted small">Courier tracking code {result.courierCode}</span>
+                {result.courierCode && <span className="muted small">Courier tracking code {result.courierCode}</span>}
               </div>
               <ol className="timeline">
                 {result.steps.map((s) => (
