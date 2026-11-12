@@ -9,8 +9,9 @@ type Form = {
   addon_enabled: boolean; addon_name: string; addon_note: string; addon_price: string;
   bkash_number: string; whatsapp_number: string; facebook_url: string; instagram_url: string;
   exchange_line: string; policy_text: string;
+  courier_cost_inside: string; courier_cost_outside: string; addon_cost: string;
 };
-const NUMS = ["delivery_inside", "delivery_outside", "free_delivery_over", "addon_price"] as const;
+const NUMS = ["delivery_inside", "delivery_outside", "free_delivery_over", "addon_price", "courier_cost_inside", "courier_cost_outside", "addon_cost"] as const;
 const isMobile = (v: string) => v === "" || /^01[3-9]\d{8}$/.test(v);
 const isUrl = (v: string) => v === "" || /^https:\/\/\S+$/.test(v);
 
@@ -29,6 +30,7 @@ export function SettingsView() {
         addon_enabled: d.addon_enabled !== false, addon_name: String(d.addon_name ?? ""), addon_note: String(d.addon_note ?? ""), addon_price: String(d.addon_price),
         bkash_number: String(d.bkash_number ?? ""), whatsapp_number: String(d.whatsapp_number ?? ""), facebook_url: String(d.facebook_url ?? ""),
         instagram_url: String(d.instagram_url ?? ""), exchange_line: String(d.exchange_line ?? ""), policy_text: String(d.policy_text ?? ""),
+        courier_cost_inside: String(d.courier_cost_inside ?? 0), courier_cost_outside: String(d.courier_cost_outside ?? 0), addon_cost: String(d.addon_cost ?? 0),
       });
     });
   }, []);
@@ -56,6 +58,7 @@ export function SettingsView() {
       addon_enabled: f.addon_enabled, addon_name: f.addon_name.trim() || "Add-on", addon_note: f.addon_note.trim(), addon_price: Number(f.addon_price),
       bkash_number: f.bkash_number, whatsapp_number: f.whatsapp_number, facebook_url: f.facebook_url.trim(), instagram_url: f.instagram_url.trim(),
       exchange_line: f.exchange_line.trim(), policy_text: f.policy_text.trim(),
+      courier_cost_inside: Number(f.courier_cost_inside), courier_cost_outside: Number(f.courier_cost_outside), addon_cost: Number(f.addon_cost),
     }).eq("id", 1).select("id").single();
     setSaving(false);
     if (error) return setErrors({ form: error.message });
@@ -109,6 +112,16 @@ export function SettingsView() {
         <h2 className="adm-h2">Exchange and refund</h2>
         <F id="s-ex" label="One-line promise" hint="Shown next to the order button, for example: 3-day easy exchange if the product has a problem"><input id="s-ex" className="input" maxLength={120} value={f.exchange_line} onChange={(e) => set("exchange_line", e.target.value)} /></F>
         <F id="s-pol" label="Full policy" hint="Shown on the policy page. Press Enter for a new line."><textarea id="s-pol" className="input" rows={10} value={f.policy_text} onChange={(e) => set("policy_text", e.target.value)} /></F>
+      </section>
+
+      <section className="adm-card">
+        <h2 className="adm-h2">Costs (for the profit report, only you can see this)</h2>
+        <div className="adm-grid2">
+          <F id="s-cin" label="Courier charges you, inside Dhaka (৳)" error={errors.courier_cost_inside}><input id="s-cin" className="input" inputMode="numeric" value={f.courier_cost_inside} onChange={digits("courier_cost_inside")} /></F>
+          <F id="s-cout" label="Courier charges you, outside Dhaka (৳)" error={errors.courier_cost_outside}><input id="s-cout" className="input" inputMode="numeric" value={f.courier_cost_outside} onChange={digits("courier_cost_outside")} /></F>
+        </div>
+        <F id="s-acost" label="What the add-on costs you (৳)" error={errors.addon_cost}><input id="s-acost" className="input" inputMode="numeric" value={f.addon_cost} onChange={digits("addon_cost")} /></F>
+        <span className="muted small">These apply to new orders. Past orders keep the costs they were placed with.</span>
       </section>
 
       {errors.form && <p className="notice" role="alert">{errors.form}</p>}

@@ -29,7 +29,8 @@ The database setup is in `supabase/`:
 3. `supabase/migrations/0002_admin.sql`: admin panel rules. Run once, after file 1.
 4. `supabase/migrations/0003_products_admin.sql`: product photo storage and product rules. Run once, after file 3.
 5. `supabase/migrations/0004_settings.sql`: settings editable from the admin. Run once, after file 4.
-6. `supabase/add_staff_member.sql`: run once per staff member to give them admin access.
+6. `supabase/migrations/0005_profit.sql`: profit and loss report, cost snapshots and ad spend. Run once, after file 5.
+7. `supabase/add_staff_member.sql`: run once per staff member to give them admin access.
 
 To run a file: open the Supabase project, go to SQL Editor, click New query, paste the whole file, click Run.
 
@@ -53,10 +54,12 @@ The site needs two settings (see `.env.example`). Without them it runs in demo m
   The store reads products from the database and shows changes straight after saving.
 - Settings tab (owner only): delivery charges, free delivery amount, checkout add-on, bKash and WhatsApp numbers,
   social links, exchange promise and the full policy page (`/policy`).
+- Profit tab (owner only): net profit, delivered sales, ad spend and ROAS, delivery rate, average order,
+  by day and by product, with daily ad spend entry. Costs are saved with each order when it is placed.
 - Staff roles: owner and order staff see everything; packing staff see only "To pack" and "Packed"
   and can only mark confirmed orders as packed. Prices and totals can never be edited.
 
 ## What is NOT built yet
 
-- Steadfast booking, SMS, Meta Conversions API and the profit dashboard.
+- Steadfast booking, SMS and Meta Conversions API.
 - Policy pages are waiting for the policy text.
