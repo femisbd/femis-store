@@ -1,14 +1,15 @@
 "use client";
 
+import { useSettings } from "@/components/cart-context";
 import { useState } from "react";
 import { Shell } from "@/components/Shell";
-import { config } from "@/lib/config";
 
 type Step = { title: string; when: string; state: "done" | "now" | "next" };
 type Result = { found: false } | { found: true; orderId: string; courierCode: string | null; steps: Step[] };
 const TAG = { done: "Done", now: "Now", next: "Next" };
 
 export default function TrackPage() {
+  const config = useSettings();
   const [q, setQ] = useState("");
   const [result, setResult] = useState<Result | null>(null);
   const [loading, setLoading] = useState(false);
@@ -48,7 +49,7 @@ export default function TrackPage() {
 
         <div aria-live="polite">
           {result && !result.found && (
-            <p style={{ color: "var(--body)" }}>We could not find an order with that number. Check the number and try again, or message us on WhatsApp {config.whatsappNumber || "[NUMBER]"}.</p>
+            <p style={{ color: "var(--body)" }}>We could not find an order with that number. Check the number and try again, or message us on WhatsApp{config.whatsappNumber ? ` ${config.whatsappNumber}` : ""}.</p>
           )}
           {result && result.found && (
             <div className="track-card">

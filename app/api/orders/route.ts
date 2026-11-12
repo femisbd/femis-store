@@ -1,6 +1,6 @@
 import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
-import { getCatalog } from "@/lib/catalog";
+import { getCatalog, getSettings } from "@/lib/catalog";
 import { detail, totals, validateOrder, type OrderRequest } from "@/lib/order";
 import { rpc, supabaseConfigured } from "@/lib/supabase";
 
@@ -49,7 +49,7 @@ export async function POST(request: Request) {
   // DEMO MODE: used only when the Supabase settings are missing (local preview). Nothing is saved.
   const d = detail(lines, (await getCatalog()).products);
   const area = body.area === "outside" ? "outside" : "inside";
-  const t = totals(d, area, !!body.addOn);
+  const t = totals(d, area, !!body.addOn, await getSettings());
   const errors = validateOrder(body, d, t);
   if (Object.keys(errors).length) return NextResponse.json({ ok: false, errors }, { status: 422 });
   const order = { id: `DEMO-${Date.now().toString(36).toUpperCase()}`, totals: t };

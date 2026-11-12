@@ -1,6 +1,11 @@
-import { config, taka } from "@/lib/config";
+"use client";
+
+import { taka } from "@/lib/config";
+import { useSettings } from "./cart-context";
 
 export function FreeDeliveryBar({ subtotal }: { subtotal: number }) {
+  const config = useSettings();
+  if (config.delivery.freeOver <= 0) return null;
   const left = Math.max(0, config.delivery.freeOver - subtotal);
   const pct = Math.min(100, Math.round((subtotal / config.delivery.freeOver) * 100));
   return (

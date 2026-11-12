@@ -4,13 +4,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { useCart } from "@/components/cart-context";
+import { useCart, useSettings } from "@/components/cart-context";
 import { FreeDeliveryBar } from "@/components/FreeDeliveryBar";
 import { Photo } from "@/components/Photo";
-import { config, taka, whatsappLink, type Area } from "@/lib/config";
+import { taka, whatsappLink, type Area } from "@/lib/config";
 import { totals, validateOrder, type OrderRequest } from "@/lib/order";
 
 export default function CheckoutPage() {
+  const config = useSettings();
   const cart = useCart();
   const router = useRouter();
   const [form, setForm] = useState({ name: "", phone: "", address: "", note: "", trxId: "" });
@@ -19,7 +20,7 @@ export default function CheckoutPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [sending, setSending] = useState(false);
 
-  const t = totals(cart.lines, area, addOn);
+  const t = totals(cart.lines, area, addOn, config);
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setForm({ ...form, [k]: e.target.value });
 
   async function submit(e: React.FormEvent) {
@@ -61,7 +62,7 @@ export default function CheckoutPage() {
         <div className="header-row">
           <Link href="/category/all">← Shop</Link>
           <Link href="/" aria-label="FEMIS home" className="logo"><Image src="/brand/femis-logo.png" alt="FEMIS" width={99} height={34} priority /></Link>
-          <a href={whatsappLink("Hello FEMIS, I need help with my order.")} target="_blank" rel="noopener noreferrer" style={{ justifySelf: "end" }}>Help</a>
+          <a href={whatsappLink(config, "Hello FEMIS, I need help with my order.")} target="_blank" rel="noopener noreferrer" style={{ justifySelf: "end" }}>Help</a>
         </div>
       </header>
 
@@ -97,12 +98,12 @@ export default function CheckoutPage() {
                 <label className="radio">
                   <input type="radio" name="area" checked={area === "inside"} onChange={() => setArea("inside")} />
                   <span className="grow">Inside Dhaka city</span>
-                  <span>{t.subtotal >= config.delivery.freeOver ? "Free" : taka(config.delivery.insideDhaka)}</span>
+                  <span>{config.delivery.freeOver > 0 && t.subtotal >= config.delivery.freeOver ? "Free" : taka(config.delivery.insideDhaka)}</span>
                 </label>
                 <label className="radio">
                   <input type="radio" name="area" checked={area === "outside"} onChange={() => setArea("outside")} />
                   <span className="grow">Outside Dhaka city</span>
-                  <span>{t.subtotal >= config.delivery.freeOver ? "Free" : taka(config.delivery.outsideDhaka)}</span>
+                  <span>{config.delivery.freeOver > 0 && t.subtotal >= config.delivery.freeOver ? "Free" : taka(config.delivery.outsideDhaka)}</span>
                 </label>
               </fieldset>
 
@@ -115,7 +116,7 @@ export default function CheckoutPage() {
                 {t.advance > 0 && (
                   <div className="paybox adv">
                     <strong style={{ display: "flex", alignItems: "center", gap: 10 }}><span className="dot" aria-hidden="true" />Advance for your pre-order piece: {taka(t.advance)}</strong>
-                    <span style={{ fontSize: 15, lineHeight: 1.55, color: "var(--body)" }}>Send {taka(t.advance)} to bKash {config.bkashNumber} using Send Money, then enter the transaction ID below. The rest is paid on delivery.</span>
+                    <span style={{ fontSize: 15, lineHeight: 1.55, color: "var(--body)" }}>Send {taka(t.advance)} to bKash {config.bkashNumber || "(number coming soon)"} using Send Money, then enter the transaction ID below. The rest is paid on delivery.</span>
                     <Field id="trxId" label="bKash transaction ID" bn="ট্রানজেকশন আইডি" error={errors.trxId}>
                       <input id="trxId" className="input" autoComplete="off" value={form.trxId} onChange={set("trxId")} aria-invalid={!!errors.trxId} />
                     </Field>
@@ -123,14 +124,14 @@ export default function CheckoutPage() {
                 )}
               </fieldset>
 
-              <label className="addon">
+              {config.addOn.enabled && <label className="addon">
                 <input type="checkbox" checked={addOn} onChange={(e) => setAddOn(e.target.checked)} />
                 <span className="grow">
                   <strong style={{ fontWeight: 500 }}>Add a {config.addOn.name.toLowerCase()}</strong>
                   <span style={{ fontSize: 15, color: "var(--body)" }}>{config.addOn.note}</span>
                 </span>
                 <span style={{ whiteSpace: "nowrap" }}>+ {taka(config.addOn.price)}</span>
-              </label>
+              </label>}
 
               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                 {(errors.form || errors.lines) && <div className="notice" role="alert">{errors.form || errors.lines}</div>}
@@ -167,7 +168,7 @@ export default function CheckoutPage() {
                   </>
                 )}
               </div>
-              <span className="muted small">{config.exchangeLine}</span>
+              {config.exchangeLine && <span className="muted small">{config.exchangeLine}</span>}
             </aside>
           </section>
         )}
@@ -175,7 +176,7 @@ export default function CheckoutPage() {
 
       <div className="mini-foot">
         <span>© FEMIS · {config.domain}</span>
-        <span>WhatsApp {config.whatsappNumber || "[NUMBER]"}</span>
+        {config.whatsappNumber && <span>WhatsApp {config.whatsappNumber}</span>}
       </div>
     </>
   );

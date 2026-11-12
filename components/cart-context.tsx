@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { detail, lineKey, type CartLine, type DetailedLine } from "@/lib/order";
+import { defaultSettings, type Settings } from "@/lib/config";
 import { findProduct, type Product } from "@/lib/products";
 
 type Cart = {
@@ -21,9 +22,11 @@ type Cart = {
 };
 
 const Ctx = createContext<Cart | null>(null);
+const SettingsCtx = createContext<Settings>(defaultSettings);
+export const useSettings = () => useContext(SettingsCtx);
 const STORAGE_KEY = "femis-cart-v1";
 
-export function CartProvider({ products, children }: { products: Product[]; children: React.ReactNode }) {
+export function CartProvider({ products, settings, children }: { products: Product[]; settings: Settings; children: React.ReactNode }) {
   const [raw, setRaw] = useState<CartLine[]>([]);
   const [ready, setReady] = useState(false);
   const [isOpen, setOpen] = useState(false);
@@ -78,7 +81,11 @@ export function CartProvider({ products, children }: { products: Product[]; chil
     };
   }, [raw, ready, isOpen, add, setQty, remove, clear, products]);
 
-  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+  return (
+    <SettingsCtx.Provider value={settings}>
+      <Ctx.Provider value={value}>{children}</Ctx.Provider>
+    </SettingsCtx.Provider>
+  );
 }
 
 export function useCart(): Cart {

@@ -2,11 +2,11 @@ import Link from "next/link";
 import { Photo } from "@/components/Photo";
 import { ProductCard } from "@/components/ProductCard";
 import { Shell } from "@/components/Shell";
-import { config, taka } from "@/lib/config";
-import { getCatalog } from "@/lib/catalog";
+import { taka } from "@/lib/config";
+import { getCatalog, getSettings } from "@/lib/catalog";
 
 export default async function Home() {
-  const { categories, products } = await getCatalog();
+  const [{ categories, products }, config] = await Promise.all([getCatalog(), getSettings()]);
   const bestsellers = products.filter((p) => p.bestseller).slice(0, 4);
   return (
     <Shell>
@@ -74,8 +74,8 @@ export default async function Home() {
 
       <section className="wrap trust">
         <div><h3>Delivery across Bangladesh</h3><p>{taka(config.delivery.insideDhaka)} inside Dhaka city and {taka(config.delivery.outsideDhaka)} outside Dhaka city. Free over {taka(config.delivery.freeOver)}.</p></div>
-        <div><h3>Exchange and refund</h3><p>{config.exchangeLine}</p></div>
-        <div><h3>Order on WhatsApp</h3><p>Prefer to chat? Message us on {config.whatsappNumber || "[WHATSAPP NUMBER]"} and we will place the order for you.</p></div>
+        <div><h3>Exchange and refund</h3><p>{config.exchangeLine || "Easy exchange if something is not right."} <Link href="/policy">Read the policy</Link></p></div>
+        <div><h3>Order on WhatsApp</h3><p>Prefer to chat? Message us{config.whatsappNumber ? ` on ${config.whatsappNumber}` : ""} and we will place the order for you.</p></div>
       </section>
     </Shell>
   );

@@ -1,4 +1,4 @@
-import { config, deliveryCharge, type Area } from "./config";
+import { deliveryCharge, type Area, type Settings } from "./config";
 import { findProduct, type Product } from "./products";
 
 export type CartLine = { slug: string; colour: string; size?: string; qty: number };
@@ -28,10 +28,10 @@ export type Totals = {
 };
 
 // One place for all money maths. The server re-runs this, so prices sent by a browser are never trusted.
-export function totals(lines: DetailedLine[], area: Area, withAddOn: boolean): Totals {
+export function totals(lines: DetailedLine[], area: Area, withAddOn: boolean, s: Settings): Totals {
   const subtotal = lines.reduce((s, l) => s + l.lineTotal, 0);
-  const addOn = withAddOn ? config.addOn.price : 0;
-  const delivery = lines.length ? deliveryCharge(area, subtotal) : 0;
+  const addOn = withAddOn && s.addOn.enabled ? s.addOn.price : 0;
+  const delivery = lines.length ? deliveryCharge(s, area, subtotal) : 0;
   const total = subtotal + addOn + delivery;
   const advance = lines.reduce((s, l) => s + (l.product.preorder?.advance ?? 0) * l.qty, 0);
   return {
@@ -41,7 +41,7 @@ export function totals(lines: DetailedLine[], area: Area, withAddOn: boolean): T
     total,
     advance,
     onDelivery: total - advance,
-    toFreeDelivery: Math.max(0, config.delivery.freeOver - subtotal),
+    toFreeDelivery: Math.max(0, s.delivery.freeOver - subtotal),
   };
 }
 

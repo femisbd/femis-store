@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
-import { config, taka, whatsappLink } from "@/lib/config";
+import { taka, whatsappLink } from "@/lib/config";
 import type { Product } from "@/lib/products";
-import { useCart } from "./cart-context";
+import { useCart, useSettings } from "./cart-context";
 import { Photo } from "./Photo";
 
 export function ProductBuy({ product, pair }: { product: Product; pair?: Product }) {
+  const config = useSettings();
   const cart = useCart();
   const router = useRouter();
   const [colour, setColour] = useState(product.colours[0]);
@@ -104,7 +105,7 @@ export function ProductBuy({ product, pair }: { product: Product; pair?: Product
         </>
       )}
 
-      <a href={whatsappLink(waText)} target="_blank" rel="noopener noreferrer" className="text-link" style={{ alignSelf: "flex-start" }}>
+      <a href={whatsappLink(config, waText)} target="_blank" rel="noopener noreferrer" className="text-link" style={{ alignSelf: "flex-start" }}>
         {soldOut ? "Ask about restock on WhatsApp" : "Or order on WhatsApp"}
       </a>
 
@@ -112,7 +113,7 @@ export function ProductBuy({ product, pair }: { product: Product; pair?: Product
         <ul className="assure">
           <li><span>{product.stock <= 3 ? `Only ${product.stock} left in stock.` : "In stock and ready to ship."}</span></li>
           <li><span>Pay cash when the parcel reaches you.</span></li>
-          <li><span>{config.exchangeLine}</span></li>
+          {config.exchangeLine && <li><span>{config.exchangeLine}</span></li>}
         </ul>
       )}
 
@@ -137,7 +138,7 @@ export function ProductBuy({ product, pair }: { product: Product; pair?: Product
       <div className="acc">
         <details open><summary>Details</summary><p>{product.details}</p></details>
         <details><summary>Delivery</summary><p>{taka(config.delivery.insideDhaka)} inside Dhaka city and {taka(config.delivery.outsideDhaka)} outside Dhaka city, sent by courier with a tracking link. Free delivery on orders over {taka(config.delivery.freeOver)}.</p></details>
-        <details><summary>Exchange and refund</summary><p>{config.exchangeLine}</p></details>
+        <details><summary>Exchange and refund</summary><p>{config.exchangeLine} <Link href="/policy">Read the full policy</Link></p></details>
       </div>
 
       {!soldOut && (

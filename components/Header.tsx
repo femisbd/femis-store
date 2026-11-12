@@ -3,7 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
-import { useCart } from "./cart-context";
+import { bnDigits, taka } from "@/lib/config";
+import { useCart, useSettings } from "./cart-context";
 
 const NAV = [
   { href: "/category/clutches", label: "Clutches" },
@@ -13,10 +14,11 @@ const NAV = [
 ];
 
 export function AnnouncementBar() {
+  const { delivery } = useSettings();
   return (
     <div className="announce">
-      <span className="bn">ঢাকা সিটির ভিতরে ডেলিভারি ৳৮০ · ঢাকা সিটির বাইরে ৳১৫০</span>
-      <span>Free delivery over ৳3,000</span>
+      <span className="bn">ঢাকা সিটির ভিতরে ডেলিভারি ৳{bnDigits(delivery.insideDhaka)} · ঢাকা সিটির বাইরে ৳{bnDigits(delivery.outsideDhaka)}</span>
+      {delivery.freeOver > 0 && <span>Free delivery over {taka(delivery.freeOver)}</span>}
     </div>
   );
 }

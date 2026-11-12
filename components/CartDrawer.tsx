@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { useEffect } from "react";
-import { config, taka } from "@/lib/config";
-import { useCart } from "./cart-context";
+import { taka } from "@/lib/config";
+import { useCart, useSettings } from "./cart-context";
 import { FreeDeliveryBar } from "./FreeDeliveryBar";
 import { Photo } from "./Photo";
 
 export function CartDrawer() {
+  const config = useSettings();
   const cart = useCart();
 
   useEffect(() => {

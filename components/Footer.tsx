@@ -1,8 +1,11 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
-import { config } from "@/lib/config";
+import { useSettings } from "./cart-context";
 
 export function Footer() {
+  const config = useSettings();
   return (
     <footer className="footer">
       <div className="wrap footer-inner">
@@ -21,16 +24,17 @@ export function Footer() {
           <nav aria-label="Help" className="footer-col">
             <span className="footer-head">Help</span>
             <Link href="/track">Track your order</Link>
-            {/* TODO: add policy pages when the policy text is ready */}
+            <Link href="/policy">Exchange and refund policy</Link>
             <span>Delivery: ৳{config.delivery.insideDhaka} inside Dhaka city, ৳{config.delivery.outsideDhaka} outside</span>
-            <span>{config.exchangeLine}</span>
           </nav>
-          <div className="footer-col">
-            <span className="footer-head">Contact</span>
-            <span>WhatsApp {config.whatsappNumber || "[NUMBER]"}</span>
-            <span>{config.facebookUrl || "[FACEBOOK PAGE]"}</span>
-            <span>{config.instagramUrl || "[INSTAGRAM PAGE]"}</span>
-          </div>
+          {(config.whatsappNumber || config.facebookUrl || config.instagramUrl) && (
+            <div className="footer-col">
+              <span className="footer-head">Contact</span>
+              {config.whatsappNumber && <a href={`https://wa.me/88${config.whatsappNumber}`} target="_blank" rel="noopener noreferrer">WhatsApp {config.whatsappNumber}</a>}
+              {config.facebookUrl && <a href={config.facebookUrl} target="_blank" rel="noopener noreferrer">Facebook</a>}
+              {config.instagramUrl && <a href={config.instagramUrl} target="_blank" rel="noopener noreferrer">Instagram</a>}
+            </div>
+          )}
         </div>
         <div className="footer-base">
           <span>© FEMIS · {config.domain}</span>

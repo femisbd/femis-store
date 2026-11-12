@@ -60,6 +60,10 @@
 .adm-mono { font-family: ui-monospace, monospace; letter-spacing: 0.04em; }
 .adm-ok { padding: 12px 14px; background: #f1faf3; border: 1px solid #9cc9a7; color: #1d4d2b; margin-top: 8px; }
 .adm-timeline { display: flex; flex-direction: column; gap: 10px; font-size: 14px; border-left: 2px solid var(--line); padding-left: 14px; }
+.adm-settings { max-width: 760px; display: flex; flex-direction: column; gap: 16px; }
+.adm-settings .adm-card { padding: 24px; gap: 16px; }
+.adm-h2 { font-size: 13px; letter-spacing: 0.16em; text-transform: uppercase; font-weight: 500; color: var(--muted); }
+.adm-warn { padding: 10px 12px; background: #fde7c4; color: #6b3d00; font-size: 14px; }
 .adm-panel-wide { width: min(640px, 100%); }
 .adm-grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); gap: 12px; }
 .adm-radio { min-height: 48px; flex: 1 1 180px; }

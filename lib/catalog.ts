@@ -1,4 +1,5 @@
 import { cacheLife, cacheTag } from "next/cache";
+import { defaultSettings, type Settings } from "./config";
 import { sampleCatalog, type Catalog, type Category, type Product } from "./products";
 
 // Loads categories and visible products from the database.
@@ -47,4 +48,36 @@ export async function getCatalog(): Promise<Catalog> {
     bestseller: r.bestseller,
   }));
   return { categories, products };
+}
+
+type SettingsRow = {
+  delivery_inside: number; delivery_outside: number; free_delivery_over: number; addon_enabled: boolean; addon_name: string;
+  addon_note: string; addon_price: number; bkash_number: string; whatsapp_number: string; exchange_line: string;
+  policy_text: string; facebook_url: string; instagram_url: string;
+};
+
+// Store settings from the database (edited in the admin Settings tab). Cached like the catalogue.
+export async function getSettings(): Promise<Settings> {
+  "use cache";
+  cacheTag("catalog");
+  cacheLife("minutes");
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  if (!url || !key) return defaultSettings; // demo mode
+  const res = await fetch(`${url}/rest/v1/settings?select=*&id=eq.1`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
+  if (!res.ok) throw new Error(`Could not load settings: ${res.status}`);
+  const r = ((await res.json()) as SettingsRow[])[0];
+  if (!r) return defaultSettings;
+  return {
+    ...defaultSettings,
+    whatsappNumber: r.whatsapp_number ?? "",
+    bkashNumber: r.bkash_number ?? "",
+    facebookUrl: r.facebook_url ?? "",
+    instagramUrl: r.instagram_url ?? "",
+    delivery: { insideDhaka: r.delivery_inside, outsideDhaka: r.delivery_outside, freeOver: r.free_delivery_over },
+    addOn: { enabled: r.addon_enabled ?? true, name: r.addon_name, note: r.addon_note ?? "", price: r.addon_price },
+    exchangeLine: r.exchange_line ?? "",
+    policyText: r.policy_text ?? "",
+  };
 }
