@@ -11,6 +11,7 @@ import { ProductsView } from "@/components/admin/ProductsView";
 import { CouponsView } from "@/components/admin/CouponsView";
 import { CustomersView } from "@/components/admin/CustomersView";
 import { IncompleteView } from "@/components/admin/IncompleteView";
+import { NewOrderForm } from "@/components/admin/NewOrderForm";
 import { ProfitView } from "@/components/admin/ProfitView";
 import { SettingsView } from "@/components/admin/SettingsView";
 import { ROLE_LABEL, staffApi, supabase, type Integrations, type Role } from "@/lib/supabase-browser";
@@ -26,6 +27,7 @@ export default function AdminPage() {
   const [openOrder, setOpenOrder] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [integrations, setIntegrations] = useState<Integrations | null>(null);
+  const [newOrder, setNewOrder] = useState(false);
 
   useEffect(() => {
     const sb = supabase();
@@ -91,7 +93,7 @@ export default function AdminPage() {
         </div>
       </header>
       <main className="adm-main">
-        {view === "orders" && <OrdersView role={role} onOpen={setOpenOrder} refreshKey={refreshKey} onChanged={refresh} steadfast={!!integrations?.steadfast.connected} />}
+        {view === "orders" && <OrdersView role={role} onOpen={setOpenOrder} refreshKey={refreshKey} onChanged={refresh} steadfast={!!integrations?.steadfast.connected} onNew={() => setNewOrder(true)} />}
         {view === "incomplete" && role !== "packing" && <IncompleteView refreshKey={refreshKey} />}
         {view === "preorders" && <PreordersView onOpen={setOpenOrder} refreshKey={refreshKey} />}
         {view === "customers" && role !== "packing" && <CustomersView role={role} onOpen={setOpenOrder} refreshKey={refreshKey} />}
@@ -100,6 +102,9 @@ export default function AdminPage() {
         {view === "profit" && role === "owner" && <ProfitView />}
         {view === "settings" && role === "owner" && <SettingsView integrations={integrations} />}
       </main>
+      {newOrder && role !== "packing" && (
+        <NewOrderForm integrations={integrations} onClose={() => setNewOrder(false)} onCreated={(no) => { setNewOrder(false); refresh(); setOpenOrder(no); }} />
+      )}
       {openOrder && <OrderPanel orderNo={openOrder} role={role} onClose={() => setOpenOrder(null)} onChanged={refresh} integrations={integrations} />}
     </>
   );

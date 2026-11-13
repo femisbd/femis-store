@@ -6,7 +6,7 @@ import { COURIER_LABEL, STATUS_LABEL, dhakaTime, staffApi, supabase, type Integr
 
 type Order = {
   order_no: string; created_at: string; name: string; phone: string; address: string; area: "inside" | "outside";
-  status: Status; has_preorder: boolean; subtotal: number; addon: number; delivery: number; discount: number; coupon_code: string | null; total: number;
+  status: Status; has_preorder: boolean; source: string; subtotal: number; addon: number; delivery: number; discount: number; coupon_code: string | null; total: number;
   advance: number; on_delivery: number; bkash_trx: string | null; advance_verified: boolean; advance_verified_at: string | null;
   note: string; staff_note: string; courier_tracking_code: string | null;
   courier_consignment_id: string | null; courier_status: string | null; courier_checked_at: string | null; capi_purchase_sent_at: string | null;
@@ -107,7 +107,7 @@ export function OrderPanel({ orderNo, role, onClose, onChanged, integrations }: 
       if (a.to === "confirmed" && integrations?.meta.server) {
         const r = await staffApi<{ sent: boolean; reason?: string }>("/api/capi/purchase", { method: "POST", body: JSON.stringify({ order: orderNo }) }).catch((e) => ({ sent: false, reason: (e as Error).message }));
         if (r.sent) setMsg({ kind: "ok", text: `${orderNo} is now confirmed. Purchase sent to Meta.` });
-        else if (r.reason && !["already_sent", "sent_when_placed", "not_connected"].includes(r.reason)) setMsg({ kind: "err", text: `${orderNo} is confirmed, but the Purchase was not sent to Meta: ${r.reason}` });
+        else if (r.reason && !["already_sent", "sent_when_placed", "not_connected", "not_website"].includes(r.reason)) setMsg({ kind: "err", text: `${orderNo} is confirmed, but the Purchase was not sent to Meta: ${r.reason}` });
         load();
       }
     });
@@ -160,7 +160,7 @@ export function OrderPanel({ orderNo, role, onClose, onChanged, integrations }: 
             {msg && <p className={msg.kind === "ok" ? "adm-ok" : "notice"} role="status">{msg.text}</p>}
 
             <section className="adm-sec">
-              <h3>Customer</h3>
+              <h3>Customer{o.source !== "website" ? ` · ordered by ${o.source === "phone" ? "phone call" : o.source}` : ""}</h3>
               <p><strong>{o.name}</strong></p>
               <div className="adm-flags">
                 <a className="adm-btn" href={`tel:${o.phone}`}>Call {o.phone}</a>

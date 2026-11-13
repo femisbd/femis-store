@@ -16,6 +16,7 @@ type Row = {
   advance: number;
   on_delivery: number;
   advance_verified: boolean;
+  source: string;
   courier_status: string | null;
   courier_tracking_code: string | null;
   order_items: { qty: number }[];
@@ -27,9 +28,10 @@ const TABS: Record<Role, Status[]> = {
   orders: ["pending", "confirmed", "packed", "shipped", "delivered", "returned", "cancelled"],
   packing: ["confirmed", "packed"],
 };
+const SOURCE_LABEL: Record<string, string> = { messenger: "Messenger", whatsapp: "WhatsApp", phone: "Phone call", instagram: "Instagram", other: "Manual" };
 const PACKING_LABEL: Partial<Record<Status, string>> = { confirmed: "To pack", packed: "Packed" };
 
-export function OrdersView({ role, onOpen, refreshKey, onChanged, steadfast }: { role: Role; onOpen: (no: string) => void; refreshKey: number; onChanged: () => void; steadfast: boolean }) {
+export function OrdersView({ role, onOpen, refreshKey, onChanged, steadfast, onNew }: { role: Role; onOpen: (no: string) => void; refreshKey: number; onChanged: () => void; steadfast: boolean; onNew: () => void }) {
   const tabs = TABS[role];
   const [tab, setTab] = useState<Status>(tabs[0]);
   const [rows, setRows] = useState<Row[]>([]);
@@ -82,7 +84,7 @@ export function OrdersView({ role, onOpen, refreshKey, onChanged, steadfast }: {
       setLoading(true);
       let q = sb
         .from("orders")
-        .select("order_no,created_at,name,phone,area,status,has_preorder,total,advance,on_delivery,advance_verified,courier_status,courier_tracking_code,order_items(qty)")
+        .select("order_no,created_at,name,phone,area,status,has_preorder,total,advance,on_delivery,advance_verified,source,courier_status,courier_tracking_code,order_items(qty)")
         .order("created_at", { ascending: false })
         .limit(200);
       const s = query.trim().toUpperCase().replace(/[\s-]/g, "");
@@ -114,6 +116,7 @@ export function OrdersView({ role, onOpen, refreshKey, onChanged, steadfast }: {
             </button>
           ))}
         </div>
+        {role !== "packing" && <button className="adm-btn" onClick={onNew}>New order</button>}
         <form className="adm-search" onSubmit={(e) => { e.preventDefault(); setQuery(search); }}>
           <label htmlFor="adm-q" className="sr-only">Search by order number or phone</label>
           <input id="adm-q" className="input" placeholder="Order no. or phone" value={search} onChange={(e) => setSearch(e.target.value)} />
@@ -151,6 +154,7 @@ export function OrdersView({ role, onOpen, refreshKey, onChanged, steadfast }: {
                 <td>
                   <div className="adm-flags">
                     {query && <span className="adm-tag">{STATUS_LABEL[r.status]}</span>}
+                    {r.source !== "website" && <span className="adm-tag">{SOURCE_LABEL[r.source] ?? r.source}</span>}
                     {r.has_preorder && <span className="adm-tag adm-tag-pre">Pre-order</span>}
                     {r.advance > 0 && !r.advance_verified && <span className="adm-tag adm-tag-warn">Verify advance</span>}
                     {r.courier_status && <span className="adm-tag">{COURIER_LABEL[r.courier_status] ?? r.courier_status}</span>}

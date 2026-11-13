@@ -80,9 +80,12 @@
 .adm-table tbody tr.adm-row-plain { cursor: default; }
 .adm-conn { display: flex; gap: 12px; align-items: flex-start; padding: 8px 0; border-top: 1px solid #ece8e1; }
 .adm-conn .adm-tag { min-width: 104px; text-align: center; }
-.adm-select { width: auto; min-height: 44px; padding: 0 10px; }
+.adm-select { width: auto; max-width: 100%; min-width: 0; min-height: 44px; padding: 0 10px; }
 .adm-drafts { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(380px, 100%), 1fr)); gap: 12px; }
 .adm-draft { padding: 18px; gap: 12px; }
+.adm-mline { padding: 12px; border: 1px solid var(--line); background: #fff; display: flex; flex-direction: column; gap: 8px; }
+.adm-qty { width: 64px; min-height: 44px; padding: 0 10px; }
+.adm-radio-sm { flex: 0 1 auto; min-height: 44px; }
 .adm-bulk { display: flex; gap: 8px; padding-bottom: 12px; }
 .adm-panel-wide { width: min(640px, 100%); }
 .adm-grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); gap: 12px; }

@@ -4,7 +4,7 @@ import { getSettings } from "@/lib/catalog";
 import { rpc, select, staffFromRequest } from "@/lib/supabase";
 
 type Order = {
-  order_no: string; created_at: string; name: string; phone: string; total: number; status: string;
+  order_no: string; created_at: string; name: string; phone: string; total: number; status: string; source: string;
   tracking: Attribution; order_items: { slug: string; qty: number; unit_price: number }[];
 };
 
@@ -19,10 +19,12 @@ export async function POST(request: Request) {
   if (!order || !/^FM\d+$/.test(order)) return NextResponse.json({ error: "Bad order number" }, { status: 400 });
 
   const [o] = await select<Order[]>(
-    `orders?select=order_no,created_at,name,phone,total,status,tracking,order_items(slug,qty,unit_price)&order_no=eq.${order}`,
+    `orders?select=order_no,created_at,name,phone,total,status,source,tracking,order_items(slug,qty,unit_price)&order_no=eq.${order}`,
     staff.token,
   );
   if (!o) return NextResponse.json({ error: "Order not found" }, { status: 404 });
+  // Orders entered by staff from chats have no website visit to match, so they are not sent as website purchases.
+  if (o.source !== "website") return NextResponse.json({ sent: false, reason: "not_website" });
   if (["pending", "cancelled", "returned"].includes(o.status)) return NextResponse.json({ sent: false, reason: "not_confirmed" });
 
   const claimed = await rpc<boolean>("claim_purchase_event", { p_order_no: order }, staff.token);

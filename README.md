@@ -32,7 +32,8 @@ The database setup is in `supabase/`:
 6. `supabase/migrations/0005_profit.sql`: profit and loss report, cost snapshots and ad spend. Run once, after file 5.
 7. `supabase/migrations/0006_courier_tracking.sql`: Steadfast and Meta tracking. Run once, after file 6.
 8. `supabase/migrations/0007_customers_coupons.sql`: incomplete orders, customers and coupons. Run once, after file 7.
-9. `supabase/add_staff_member.sql`: run once per staff member to give them admin access.
+9. `supabase/migrations/0008_manual_orders.sql`: orders entered by staff. Run once, after file 8.
+10. `supabase/add_staff_member.sql`: run once per staff member to give them admin access.
 
 To run a file: open the Supabase project, go to SQL Editor, click New query, paste the whole file, click Run.
 
@@ -70,6 +71,9 @@ The site needs two settings (see `.env.example`). Without them it runs in demo m
   ordering online, and (owner) export a CSV for Meta custom audiences.
 - Coupons (owner): percent (with an optional cap), taka off, or free delivery; minimum order, dates, total uses and
   uses per customer; results per coupon from delivered orders. Discounts apply to products only.
+- New order (owner and order staff): enter Messenger, WhatsApp, phone and Instagram orders with the same price and
+  stock rules, a returning customer's details filled in from the phone number, delivery charge, discount and advance,
+  saved as Confirmed or New. These orders are tagged by source and are not sent to Meta as website purchases.
 - Staff roles: owner and order staff see everything; packing staff see only "To pack" and "Packed"
   and can only mark confirmed orders as packed. Prices and totals can never be edited.
 
