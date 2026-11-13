@@ -9,7 +9,8 @@ import { useCart, useSettings } from "@/components/cart-context";
 import { FreeDeliveryBar } from "@/components/FreeDeliveryBar";
 import { Photo } from "@/components/Photo";
 import { taka, whatsappLink, type Area } from "@/lib/config";
-import { totals, validateOrder, type OrderRequest } from "@/lib/order";
+import { isBdMobile, totals, validateOrder, type Coupon, type OrderRequest } from "@/lib/order";
+import { publicRpc } from "@/lib/public-db";
 
 export default function CheckoutPage() {
   const config = useSettings();
@@ -20,8 +21,49 @@ export default function CheckoutPage() {
   const [addOn, setAddOn] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [sending, setSending] = useState(false);
+  const [coupon, setCoupon] = useState<Coupon | null>(null);
+  const [couponInput, setCouponInput] = useState("");
+  const [couponOpen, setCouponOpen] = useState(false);
+  const [couponMsg, setCouponMsg] = useState("");
+  const [checking, setChecking] = useState(false);
 
-  const t = totals(cart.lines, area, addOn, config);
+  const t = totals(cart.lines, area, addOn, config, coupon);
+  const couponBelowMin = coupon && t.subtotal < coupon.min_subtotal;
+
+  async function applyCoupon() {
+    const code = couponInput.trim().toUpperCase();
+    if (!code) return;
+    setChecking(true);
+    setCouponMsg("");
+    const r = await publicRpc<{ ok: boolean; message?: string } & Coupon>("check_coupon", { p_code: code, p_subtotal: t.subtotal, p_phone: form.phone.replace(/[\s-]/g, "") });
+    setChecking(false);
+    if (!r) return setCouponMsg("Could not check the code. Try again.");
+    if (!r.ok) return setCouponMsg(r.message ?? "This code is not valid.");
+    setCoupon({ code: r.code, kind: r.kind, value: r.value, max_discount: r.max_discount, min_subtotal: r.min_subtotal });
+    setErrors((e) => { const { coupon: _drop, ...rest } = e; return rest; });
+  }
+
+  // Save what the visitor has typed once the phone number is valid, so staff can follow up
+  // if they leave without ordering. One saved checkout per browser; updated as they type.
+  useEffect(() => {
+    if (!cart.ready || !cart.lines.length || !isBdMobile(form.phone)) return;
+    const id = setTimeout(() => {
+      let draftId = "";
+      try {
+        draftId = localStorage.getItem("femis-draft-id") || crypto.randomUUID();
+        localStorage.setItem("femis-draft-id", draftId);
+      } catch {
+        return;
+      }
+      publicRpc("save_checkout_draft", {
+        p: {
+          id: draftId, phone: form.phone.replace(/[\s-]/g, ""), name: form.name, address: form.address, area,
+          lines: cart.lines.map(({ slug, colour, size, qty }) => ({ slug, colour, size, qty })),
+        },
+      });
+    }, 1500);
+    return () => clearTimeout(id);
+  }, [cart.ready, cart.lines, form.phone, form.name, form.address, area]);
 
   // InitiateCheckout once, when the saved cart has loaded.
   const started = useRef(false);
@@ -38,6 +80,7 @@ export default function CheckoutPage() {
       ...form,
       area,
       addOn,
+      coupon: coupon && !couponBelowMin ? coupon.code : "",
       lines: cart.lines.map(({ slug, colour, size, qty }) => ({ slug, colour, size, qty })),
     };
     const body = { ...payload, tracking: attribution() };
@@ -53,10 +96,20 @@ export default function CheckoutPage() {
       const res = await fetch("/api/orders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const data = await res.json();
       if (!data.ok) {
-        setErrors(data.errors ?? { form: "Something went wrong. Please try again." });
+        const errs = data.errors ?? { form: "Something went wrong. Please try again." };
+        if (errs.coupon) {
+          setCoupon(null);
+          setCouponOpen(true);
+          setCouponMsg(errs.coupon);
+          errs.form = errs.form ?? `${errs.coupon} The code was removed; check the new total and confirm again.`;
+        }
+        setErrors(errs);
         return;
       }
       sessionStorage.setItem("femis-last-order", JSON.stringify(data.order));
+      try {
+        localStorage.removeItem("femis-draft-id");
+      } catch {}
       cart.clear();
       router.push("/thank-you");
     } catch {
@@ -144,6 +197,29 @@ export default function CheckoutPage() {
               </label>}
 
               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                <div className="coupon">
+                  {coupon ? (
+                    <div className="row-between" style={{ alignItems: "center" }}>
+                      <span>
+                        Code <strong style={{ fontWeight: 500 }}>{coupon.code}</strong>{" "}
+                        {couponBelowMin ? <span className="err">needs an order of at least {taka(coupon.min_subtotal)}</span> : t.discount > 0 ? `· you save ${taka(t.discount)}` : coupon.kind === "free_delivery" ? "· free delivery" : ""}
+                      </span>
+                      <button type="button" className="link-btn" onClick={() => { setCoupon(null); setCouponInput(""); setCouponMsg(""); }}>Remove</button>
+                    </div>
+                  ) : couponOpen ? (
+                    <div className="field">
+                      <label htmlFor="coupon">Coupon code</label>
+                      <div className="coupon-row">
+                        <input id="coupon" className="input" autoComplete="off" autoCapitalize="characters" value={couponInput} onChange={(e) => setCouponInput(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); applyCoupon(); } }} />
+                        <button type="button" className="btn-outline" onClick={applyCoupon} disabled={checking || !couponInput.trim()}>{checking ? "Checking…" : "Apply"}</button>
+                      </div>
+                      {couponMsg && <span className="err" role="alert">{couponMsg}</span>}
+                    </div>
+                  ) : (
+                    <button type="button" className="link-btn" onClick={() => setCouponOpen(true)}>Have a coupon code?</button>
+                  )}
+                </div>
                 {(errors.form || errors.lines) && <div className="notice" role="alert">{errors.form || errors.lines}</div>}
                 <div className="row-between big" style={{ fontWeight: 500 }}><span>Total</span><span>{taka(t.total)}</span></div>
                 <button type="submit" className="btn" style={{ minHeight: 60 }} disabled={sending || !cart.ready}>{sending ? "Sending your order…" : "Confirm order"}</button>
@@ -165,10 +241,11 @@ export default function CheckoutPage() {
                   </li>
                 ))}
               </ul>
-              <FreeDeliveryBar subtotal={t.subtotal} />
+              <FreeDeliveryBar subtotal={t.subtotal - t.discount} />
               <div className="sum-rows">
                 <div className="row-between"><span className="k">Subtotal</span><span>{taka(t.subtotal)}</span></div>
                 {addOn && <div className="row-between"><span className="k">{config.addOn.name}</span><span>{taka(t.addOn)}</span></div>}
+                {t.discount > 0 && <div className="row-between"><span className="k">Discount ({coupon?.code})</span><span>−{taka(t.discount)}</span></div>}
                 <div className="row-between"><span className="k">Delivery</span><span>{t.delivery === 0 ? "Free" : taka(t.delivery)}</span></div>
                 <div className="row-between sum-total"><span>Total</span><span>{taka(t.total)}</span></div>
                 {t.advance > 0 && (

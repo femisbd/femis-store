@@ -31,7 +31,8 @@ The database setup is in `supabase/`:
 5. `supabase/migrations/0004_settings.sql`: settings editable from the admin. Run once, after file 4.
 6. `supabase/migrations/0005_profit.sql`: profit and loss report, cost snapshots and ad spend. Run once, after file 5.
 7. `supabase/migrations/0006_courier_tracking.sql`: Steadfast and Meta tracking. Run once, after file 6.
-8. `supabase/add_staff_member.sql`: run once per staff member to give them admin access.
+8. `supabase/migrations/0007_customers_coupons.sql`: incomplete orders, customers and coupons. Run once, after file 7.
+9. `supabase/add_staff_member.sql`: run once per staff member to give them admin access.
 
 To run a file: open the Supabase project, go to SQL Editor, click New query, paste the whole file, click Run.
 
@@ -63,6 +64,12 @@ The site needs two settings (see `.env.example`). Without them it runs in demo m
   Conversions API, sent when staff confirm the order (or when it is placed, set in Settings). The order number is
   the event id, so browser and server events are counted once.
 - Both stay switched off until their keys are added in Netlify (see `.env.example`).
+- Incomplete orders: checkout details are saved once a valid phone number is typed; staff see unfinished
+  checkouts after 10 minutes, with call and WhatsApp buttons, a result and a note. They disappear when that number orders.
+- Customers: orders, deliveries, returns and spend per phone number, repeat and risky tags, block a number from
+  ordering online, and (owner) export a CSV for Meta custom audiences.
+- Coupons (owner): percent (with an optional cap), taka off, or free delivery; minimum order, dates, total uses and
+  uses per customer; results per coupon from delivered orders. Discounts apply to products only.
 - Staff roles: owner and order staff see everything; packing staff see only "To pack" and "Packed"
   and can only mark confirmed orders as packed. Prices and totals can never be edited.
 

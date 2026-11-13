@@ -6,7 +6,7 @@ import { COURIER_LABEL, STATUS_LABEL, dhakaTime, staffApi, supabase, type Integr
 
 type Order = {
   order_no: string; created_at: string; name: string; phone: string; address: string; area: "inside" | "outside";
-  status: Status; has_preorder: boolean; subtotal: number; addon: number; delivery: number; total: number;
+  status: Status; has_preorder: boolean; subtotal: number; addon: number; delivery: number; discount: number; coupon_code: string | null; total: number;
   advance: number; on_delivery: number; bkash_trx: string | null; advance_verified: boolean; advance_verified_at: string | null;
   note: string; staff_note: string; courier_tracking_code: string | null;
   courier_consignment_id: string | null; courier_status: string | null; courier_checked_at: string | null; capi_purchase_sent_at: string | null;
@@ -46,6 +46,7 @@ export function OrderPanel({ orderNo, role, onClose, onChanged, integrations }: 
   const canEdit = role !== "packing";
   const steadfast = !!integrations?.steadfast.connected;
   const [courierRec, setCourierRec] = useState<CourierRecord | null>(null);
+  const [blocked, setBlocked] = useState(false);
 
   const load = useCallback(async () => {
     const sb = supabase();
@@ -64,6 +65,7 @@ export function OrderPanel({ orderNo, role, onClose, onChanged, integrations }: 
       sb.rpc("staff_names"),
     ]);
     setHistory((h as History[]) ?? []);
+    sb.from("customers").select("blocked").eq("phone", order.phone).maybeSingle().then(({ data: c }) => setBlocked(!!c?.blocked));
     if (steadfast && role !== "packing" && ["pending", "confirmed"].includes(order.status)) {
       staffApi<CourierRecord>(`/api/courier/check?phone=${order.phone}`).then(setCourierRec).catch(() => setCourierRec(null));
     }
@@ -163,6 +165,15 @@ export function OrderPanel({ orderNo, role, onClose, onChanged, integrations }: 
               <div className="adm-flags">
                 <a className="adm-btn" href={`tel:${o.phone}`}>Call {o.phone}</a>
                 <a className="adm-btn-ghost" href={waLink(o.phone)} target="_blank" rel="noopener noreferrer">WhatsApp</a>
+                {canEdit && (
+                  <button className={blocked ? "adm-btn-ghost" : "adm-btn-danger"} disabled={busy} onClick={async () => {
+                    if (!blocked && !window.confirm(`Block ${o.phone}? They won't be able to order on the website.`)) return;
+                    const { error } = await supabase().from("customers").update({ blocked: !blocked }).eq("phone", o.phone);
+                    if (error) return setMsg({ kind: "err", text: error.message });
+                    setBlocked(!blocked);
+                    setMsg({ kind: "ok", text: blocked ? `${o.phone} can order again.` : `${o.phone} is blocked from ordering on the website.` });
+                  }}>{blocked ? "Unblock number" : "Block number"}</button>
+                )}
               </div>
               <p className="muted small">{o.area === "inside" ? "Inside Dhaka city" : "Outside Dhaka city"}</p>
               {canEdit ? (
@@ -202,6 +213,8 @@ export function OrderPanel({ orderNo, role, onClose, onChanged, integrations }: 
               <div className="sum-rows">
                 <div className="row-between"><span className="k">Subtotal</span><span>{taka(o.subtotal)}</span></div>
                 {o.addon > 0 && <div className="row-between"><span className="k">Add-on</span><span>{taka(o.addon)}</span></div>}
+                {o.discount > 0 && <div className="row-between"><span className="k">Discount ({o.coupon_code})</span><span>−{taka(o.discount)}</span></div>}
+                {o.coupon_code && o.discount === 0 && <div className="row-between"><span className="k">Coupon</span><span>{o.coupon_code}</span></div>}
                 <div className="row-between"><span className="k">Delivery</span><span>{o.delivery === 0 ? "Free" : taka(o.delivery)}</span></div>
                 <div className="row-between sum-total"><span>Total</span><span>{taka(o.total)}</span></div>
                 {o.advance > 0 && <div className="row-between"><span className="k">Advance (bKash)</span><span>{taka(o.advance)}</span></div>}

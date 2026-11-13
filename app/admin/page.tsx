@@ -8,11 +8,14 @@ import { OrderPanel } from "@/components/admin/OrderPanel";
 import { OrdersView } from "@/components/admin/OrdersView";
 import { PreordersView } from "@/components/admin/PreordersView";
 import { ProductsView } from "@/components/admin/ProductsView";
+import { CouponsView } from "@/components/admin/CouponsView";
+import { CustomersView } from "@/components/admin/CustomersView";
+import { IncompleteView } from "@/components/admin/IncompleteView";
 import { ProfitView } from "@/components/admin/ProfitView";
 import { SettingsView } from "@/components/admin/SettingsView";
 import { ROLE_LABEL, staffApi, supabase, type Integrations, type Role } from "@/lib/supabase-browser";
 
-type View = "orders" | "preorders" | "products" | "settings" | "profit";
+type View = "orders" | "incomplete" | "preorders" | "customers" | "products" | "coupons" | "settings" | "profit";
 
 export default function AdminPage() {
   const [session, setSession] = useState<Session | null>(null);
@@ -73,8 +76,11 @@ export default function AdminPage() {
           <Image src="/brand/femis-logo.png" alt="FEMIS" width={82} height={28} priority />
           <nav className="adm-tabs" aria-label="Admin">
             <button aria-pressed={view === "orders"} onClick={() => setView("orders")}>Orders</button>
+            {role !== "packing" && <button aria-pressed={view === "incomplete"} onClick={() => setView("incomplete")}>Incomplete</button>}
             {role !== "packing" && <button aria-pressed={view === "preorders"} onClick={() => setView("preorders")}>Pre-orders</button>}
+            {role !== "packing" && <button aria-pressed={view === "customers"} onClick={() => setView("customers")}>Customers</button>}
             {role === "owner" && <button aria-pressed={view === "products"} onClick={() => setView("products")}>Products</button>}
+            {role === "owner" && <button aria-pressed={view === "coupons"} onClick={() => setView("coupons")}>Coupons</button>}
             {role === "owner" && <button aria-pressed={view === "profit"} onClick={() => setView("profit")}>Profit</button>}
             {role === "owner" && <button aria-pressed={view === "settings"} onClick={() => setView("settings")}>Settings</button>}
           </nav>
@@ -86,7 +92,10 @@ export default function AdminPage() {
       </header>
       <main className="adm-main">
         {view === "orders" && <OrdersView role={role} onOpen={setOpenOrder} refreshKey={refreshKey} onChanged={refresh} steadfast={!!integrations?.steadfast.connected} />}
+        {view === "incomplete" && role !== "packing" && <IncompleteView refreshKey={refreshKey} />}
         {view === "preorders" && <PreordersView onOpen={setOpenOrder} refreshKey={refreshKey} />}
+        {view === "customers" && role !== "packing" && <CustomersView role={role} onOpen={setOpenOrder} refreshKey={refreshKey} />}
+        {view === "coupons" && role === "owner" && <CouponsView />}
         {view === "products" && role === "owner" && <ProductsView />}
         {view === "profit" && role === "owner" && <ProfitView />}
         {view === "settings" && role === "owner" && <SettingsView integrations={integrations} />}

@@ -31,6 +31,7 @@ export async function POST(request: Request) {
           add_on: !!body.addOn,
           trx_id: body.trxId ?? "",
           note: body.note ?? "",
+          coupon: typeof body.coupon === "string" ? body.coupon.slice(0, 30) : "",
           lines: lines.map(({ slug, colour, size, qty }) => ({ slug, colour, size: size ?? null, qty })),
           // Saved with the order so the Purchase event can be sent to Meta later, when staff confirm it.
           tracking: attribution,
