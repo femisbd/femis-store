@@ -11,6 +11,7 @@ export type Settings = {
   addOn: { enabled: boolean; name: string; note: string; price: number };
   exchangeLine: string; // one-line promise shown near the order button
   policyText: string; // full exchange and refund policy page
+  capiPurchaseOn: "placed" | "confirmed"; // when the Purchase event goes to Meta
 };
 
 export const defaultSettings: Settings = {
@@ -24,6 +25,7 @@ export const defaultSettings: Settings = {
   addOn: { enabled: true, name: "Gift box", note: "Arrives in the same parcel.", price: 200 },
   exchangeLine: "",
   policyText: "",
+  capiPurchaseOn: "confirmed",
 };
 
 export type Area = "inside" | "outside";

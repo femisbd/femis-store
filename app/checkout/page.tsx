@@ -3,7 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { attribution, track } from "@/lib/pixel";
 import { useCart, useSettings } from "@/components/cart-context";
 import { FreeDeliveryBar } from "@/components/FreeDeliveryBar";
 import { Photo } from "@/components/Photo";
@@ -21,6 +22,14 @@ export default function CheckoutPage() {
   const [sending, setSending] = useState(false);
 
   const t = totals(cart.lines, area, addOn, config);
+
+  // InitiateCheckout once, when the saved cart has loaded.
+  const started = useRef(false);
+  useEffect(() => {
+    if (!cart.ready || started.current || !cart.lines.length) return;
+    started.current = true;
+    track("InitiateCheckout", { content_ids: cart.lines.map((l) => l.slug), content_type: "product", num_items: cart.count, value: cart.subtotal, currency: "BDT" });
+  }, [cart.ready, cart.lines, cart.count, cart.subtotal]);
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setForm({ ...form, [k]: e.target.value });
 
   async function submit(e: React.FormEvent) {
@@ -31,6 +40,7 @@ export default function CheckoutPage() {
       addOn,
       lines: cart.lines.map(({ slug, colour, size, qty }) => ({ slug, colour, size, qty })),
     };
+    const body = { ...payload, tracking: attribution() };
     const found = validateOrder(payload, cart.lines, t);
     setErrors(found);
     if (Object.keys(found).length) {
@@ -40,7 +50,7 @@ export default function CheckoutPage() {
     }
     setSending(true);
     try {
-      const res = await fetch("/api/orders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      const res = await fetch("/api/orders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const data = await res.json();
       if (!data.ok) {
         setErrors(data.errors ?? { form: "Something went wrong. Please try again." });

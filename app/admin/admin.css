@@ -78,6 +78,9 @@
 .adm-adform .input { min-height: 44px; }
 .adm-num td:not(:first-child), .adm-num th:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
 .adm-table tbody tr.adm-row-plain { cursor: default; }
+.adm-conn { display: flex; gap: 12px; align-items: flex-start; padding: 8px 0; border-top: 1px solid #ece8e1; }
+.adm-conn .adm-tag { min-width: 104px; text-align: center; }
+.adm-bulk { display: flex; gap: 8px; padding-bottom: 12px; }
 .adm-panel-wide { width: min(640px, 100%); }
 .adm-grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); gap: 12px; }
 .adm-radio { min-height: 48px; flex: 1 1 180px; }

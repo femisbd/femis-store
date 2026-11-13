@@ -2,13 +2,14 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { taka } from "@/lib/config";
-import { STATUS_LABEL, dhakaTime, supabase, type Role, type Status } from "@/lib/supabase-browser";
+import { COURIER_LABEL, STATUS_LABEL, dhakaTime, staffApi, supabase, type Integrations, type Role, type Status } from "@/lib/supabase-browser";
 
 type Order = {
   order_no: string; created_at: string; name: string; phone: string; address: string; area: "inside" | "outside";
   status: Status; has_preorder: boolean; subtotal: number; addon: number; delivery: number; total: number;
   advance: number; on_delivery: number; bkash_trx: string | null; advance_verified: boolean; advance_verified_at: string | null;
   note: string; staff_note: string; courier_tracking_code: string | null;
+  courier_consignment_id: string | null; courier_status: string | null; courier_checked_at: string | null; capi_purchase_sent_at: string | null;
   order_items: { id: number; name: string; colour: string; size: string | null; qty: number; unit_price: number; line_total: number; is_preorder: boolean }[];
   order_events: { id: number; status: Status; note: string; created_by: string | null; created_at: string }[];
 };
@@ -31,7 +32,9 @@ function actionsFor(role: Role, o: Order): Action[] {
 
 const waLink = (phone: string) => `https://wa.me/88${phone}`;
 
-export function OrderPanel({ orderNo, role, onClose, onChanged }: { orderNo: string; role: Role; onClose: () => void; onChanged: () => void }) {
+type CourierRecord = { parcels: number; delivered: number; cancelled: number; reports: number };
+
+export function OrderPanel({ orderNo, role, onClose, onChanged, integrations }: { orderNo: string; role: Role; onClose: () => void; onChanged: () => void; integrations: Integrations | null }) {
   const [o, setO] = useState<Order | null>(null);
   const [history, setHistory] = useState<History[]>([]);
   const [names, setNames] = useState<Record<string, string>>({});
@@ -41,6 +44,8 @@ export function OrderPanel({ orderNo, role, onClose, onChanged }: { orderNo: str
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
   const canEdit = role !== "packing";
+  const steadfast = !!integrations?.steadfast.connected;
+  const [courierRec, setCourierRec] = useState<CourierRecord | null>(null);
 
   const load = useCallback(async () => {
     const sb = supabase();
@@ -59,8 +64,11 @@ export function OrderPanel({ orderNo, role, onClose, onChanged }: { orderNo: str
       sb.rpc("staff_names"),
     ]);
     setHistory((h as History[]) ?? []);
+    if (steadfast && role !== "packing" && ["pending", "confirmed"].includes(order.status)) {
+      staffApi<CourierRecord>(`/api/courier/check?phone=${order.phone}`).then(setCourierRec).catch(() => setCourierRec(null));
+    }
     setNames(Object.fromEntries(((n as { user_id: string; name: string }[]) ?? []).map((x) => [x.user_id, x.name])));
-  }, [orderNo]);
+  }, [orderNo, steadfast, role]);
 
   useEffect(() => {
     load();
@@ -90,7 +98,38 @@ export function OrderPanel({ orderNo, role, onClose, onChanged }: { orderNo: str
 
   const setStatus = (a: Action) => {
     if (a.danger && !window.confirm(`${a.label} ${orderNo}?`)) return;
-    run(() => supabase().rpc("set_order_status", { p_order_no: orderNo, p_status: a.to, p_note: note }), `${orderNo} is now ${STATUS_LABEL[a.to].toLowerCase()}.`).then((ok) => ok && setNote(""));
+    run(() => supabase().rpc("set_order_status", { p_order_no: orderNo, p_status: a.to, p_note: note }), `${orderNo} is now ${STATUS_LABEL[a.to].toLowerCase()}.`).then(async (ok) => {
+      if (!ok) return;
+      setNote("");
+      // Confirmed orders are reported to Meta as purchases (when that is the chosen setting).
+      if (a.to === "confirmed" && integrations?.meta.server) {
+        const r = await staffApi<{ sent: boolean; reason?: string }>("/api/capi/purchase", { method: "POST", body: JSON.stringify({ order: orderNo }) }).catch((e) => ({ sent: false, reason: (e as Error).message }));
+        if (r.sent) setMsg({ kind: "ok", text: `${orderNo} is now confirmed. Purchase sent to Meta.` });
+        else if (r.reason && !["already_sent", "sent_when_placed", "not_connected"].includes(r.reason)) setMsg({ kind: "err", text: `${orderNo} is confirmed, but the Purchase was not sent to Meta: ${r.reason}` });
+        load();
+      }
+    });
+  };
+  const book = async () => {
+    setBusy(true); setMsg(null);
+    try {
+      const r = await staffApi<{ results: { ok: boolean; message: string }[] }>("/api/courier/book", { method: "POST", body: JSON.stringify({ orders: [orderNo] }) });
+      const x = r.results[0];
+      setMsg({ kind: x?.ok ? "ok" : "err", text: x?.message ?? "No answer from Steadfast." });
+    } catch (e) {
+      setMsg({ kind: "err", text: (e as Error).message });
+    }
+    setBusy(false); await load(); onChanged();
+  };
+  const checkCourier = async () => {
+    setBusy(true); setMsg(null);
+    try {
+      const r = await staffApi<{ updates: { courier: string; status: string }[]; failed: number }>("/api/courier/sync", { method: "POST", body: JSON.stringify({ orders: [orderNo] }) });
+      setMsg(r.failed ? { kind: "err", text: "Could not reach Steadfast. Try again." } : { kind: "ok", text: `Steadfast: ${r.updates[0]?.courier ?? "no change"}.` });
+    } catch (e) {
+      setMsg({ kind: "err", text: (e as Error).message });
+    }
+    setBusy(false); await load(); onChanged();
   };
   const verify = (v: boolean) => run(() => supabase().rpc("verify_advance", { p_order_no: orderNo, p_verified: v }), v ? "Advance marked as verified." : "Advance marked as not verified.");
   const saveDetails = () => run(() => supabase().from("orders").update({ staff_note: staffNote, address }).eq("order_no", orderNo).select("order_no").single(), "Saved.");
@@ -169,6 +208,34 @@ export function OrderPanel({ orderNo, role, onClose, onChanged }: { orderNo: str
                 <div className="row-between" style={{ fontWeight: 500 }}><span>Courier collects</span><span>{taka(o.on_delivery)}</span></div>
               </div>
             </section>
+
+            {courierRec && (
+              <div className={`adm-history ${courierRec.parcels > 0 && courierRec.cancelled > courierRec.delivered ? "adm-history-risk" : ""}`}>
+                {courierRec.parcels === 0
+                  ? "Steadfast record: no parcels to this number with any merchant yet."
+                  : `Steadfast record with all merchants: ${courierRec.parcels} parcels, ${courierRec.delivered} delivered, ${courierRec.cancelled} cancelled (${Math.round((courierRec.delivered / courierRec.parcels) * 100)}% success).`}
+                {courierRec.reports > 0 && ` ${courierRec.reports} fraud ${courierRec.reports === 1 ? "report" : "reports"} from other merchants.`}
+              </div>
+            )}
+
+            {(o.courier_consignment_id || (steadfast && canEdit && ["confirmed", "packed"].includes(o.status))) && (
+              <section className="adm-sec">
+                <h3>Courier</h3>
+                {o.courier_consignment_id ? (
+                  <>
+                    <p>Steadfast · consignment <strong className="adm-mono">{o.courier_consignment_id}</strong> · tracking <strong className="adm-mono">{o.courier_tracking_code}</strong></p>
+                    <p className="small">Status: <strong>{o.courier_status ? COURIER_LABEL[o.courier_status] ?? o.courier_status : "—"}</strong>{o.courier_checked_at ? <span className="muted"> · checked {dhakaTime(o.courier_checked_at)}</span> : null}</p>
+                    {steadfast && canEdit && o.status === "shipped" && <button className="adm-btn-ghost" disabled={busy} onClick={checkCourier} style={{ alignSelf: "flex-start" }}>Check status now</button>}
+                  </>
+                ) : (
+                  <>
+                    <p className="small">Cash to collect: <strong>{taka(o.on_delivery)}</strong>. Booking sends the name, phone, address and items to Steadfast and marks the order as shipped.</p>
+                    <button className="adm-btn" disabled={busy || (o.advance > 0 && !o.advance_verified)} onClick={book} style={{ alignSelf: "flex-start" }}>Book with Steadfast</button>
+                    {o.advance > 0 && !o.advance_verified && <span className="muted small">Verify the bKash advance first.</span>}
+                  </>
+                )}
+              </section>
+            )}
 
             {o.advance > 0 && (
               <section className={`adm-sec adm-advance ${o.advance_verified ? "is-ok" : ""}`}>

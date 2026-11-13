@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { CartDrawer } from "@/components/CartDrawer";
 import { CartProvider } from "@/components/cart-context";
+import { MetaPixel } from "@/components/MetaPixel";
 import { getCatalog, getSettings } from "@/lib/catalog";
 // Fonts are self-hosted (served from our own domain), which is faster than loading them from Google.
 import "@fontsource/cormorant-garamond/latin-500.css";
@@ -24,6 +25,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <CartProvider products={products} settings={settings}>
           {children}
           <CartDrawer />
+          <MetaPixel />
         </CartProvider>
       </body>
     </html>

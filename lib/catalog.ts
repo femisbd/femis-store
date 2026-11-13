@@ -53,7 +53,7 @@ export async function getCatalog(): Promise<Catalog> {
 type SettingsRow = {
   delivery_inside: number; delivery_outside: number; free_delivery_over: number; addon_enabled: boolean; addon_name: string;
   addon_note: string; addon_price: number; bkash_number: string; whatsapp_number: string; exchange_line: string;
-  policy_text: string; facebook_url: string; instagram_url: string;
+  policy_text: string; facebook_url: string; instagram_url: string; capi_purchase_on?: "placed" | "confirmed";
 };
 
 // Store settings from the database (edited in the admin Settings tab). Cached like the catalogue.
@@ -79,5 +79,6 @@ export async function getSettings(): Promise<Settings> {
     addOn: { enabled: r.addon_enabled ?? true, name: r.addon_name, note: r.addon_note ?? "", price: r.addon_price },
     exchangeLine: r.exchange_line ?? "",
     policyText: r.policy_text ?? "",
+    capiPurchaseOn: r.capi_purchase_on === "placed" ? "placed" : "confirmed",
   };
 }

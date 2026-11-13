@@ -30,7 +30,8 @@ The database setup is in `supabase/`:
 4. `supabase/migrations/0003_products_admin.sql`: product photo storage and product rules. Run once, after file 3.
 5. `supabase/migrations/0004_settings.sql`: settings editable from the admin. Run once, after file 4.
 6. `supabase/migrations/0005_profit.sql`: profit and loss report, cost snapshots and ad spend. Run once, after file 5.
-7. `supabase/add_staff_member.sql`: run once per staff member to give them admin access.
+7. `supabase/migrations/0006_courier_tracking.sql`: Steadfast and Meta tracking. Run once, after file 6.
+8. `supabase/add_staff_member.sql`: run once per staff member to give them admin access.
 
 To run a file: open the Supabase project, go to SQL Editor, click New query, paste the whole file, click Run.
 
@@ -56,10 +57,16 @@ The site needs two settings (see `.env.example`). Without them it runs in demo m
   social links, exchange promise and the full policy page (`/policy`).
 - Profit tab (owner only): net profit, delivered sales, ad spend and ROAS, delivery rate, average order,
   by day and by product, with daily ad spend entry. Costs are saved with each order when it is placed.
+- Steadfast: book one order or all packed orders, delivery status sync (delivered and returned update the
+  order and stock), and the customer's Steadfast delivery record shown before confirming.
+- Meta: browser Pixel (PageView, ViewContent, AddToCart, InitiateCheckout) and server-side Purchase through the
+  Conversions API, sent when staff confirm the order (or when it is placed, set in Settings). The order number is
+  the event id, so browser and server events are counted once.
+- Both stay switched off until their keys are added in Netlify (see `.env.example`).
 - Staff roles: owner and order staff see everything; packing staff see only "To pack" and "Packed"
   and can only mark confirmed orders as packed. Prices and totals can never be edited.
 
 ## What is NOT built yet
 
-- Steadfast booking, SMS and Meta Conversions API.
+- SMS (no provider chosen yet).
 - Policy pages are waiting for the policy text.

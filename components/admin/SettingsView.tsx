@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase-browser";
+import { supabase, type Integrations } from "@/lib/supabase-browser";
+import { taka } from "@/lib/config";
 import { refreshStore } from "./ProductsView";
 
 type Form = {
@@ -10,12 +11,13 @@ type Form = {
   bkash_number: string; whatsapp_number: string; facebook_url: string; instagram_url: string;
   exchange_line: string; policy_text: string;
   courier_cost_inside: string; courier_cost_outside: string; addon_cost: string;
+  capi_purchase_on: "placed" | "confirmed";
 };
 const NUMS = ["delivery_inside", "delivery_outside", "free_delivery_over", "addon_price", "courier_cost_inside", "courier_cost_outside", "addon_cost"] as const;
 const isMobile = (v: string) => v === "" || /^01[3-9]\d{8}$/.test(v);
 const isUrl = (v: string) => v === "" || /^https:\/\/\S+$/.test(v);
 
-export function SettingsView() {
+export function SettingsView({ integrations }: { integrations: Integrations | null }) {
   const [f, setF] = useState<Form | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [msg, setMsg] = useState("");
@@ -31,6 +33,7 @@ export function SettingsView() {
         bkash_number: String(d.bkash_number ?? ""), whatsapp_number: String(d.whatsapp_number ?? ""), facebook_url: String(d.facebook_url ?? ""),
         instagram_url: String(d.instagram_url ?? ""), exchange_line: String(d.exchange_line ?? ""), policy_text: String(d.policy_text ?? ""),
         courier_cost_inside: String(d.courier_cost_inside ?? 0), courier_cost_outside: String(d.courier_cost_outside ?? 0), addon_cost: String(d.addon_cost ?? 0),
+        capi_purchase_on: d.capi_purchase_on === "placed" ? "placed" : "confirmed",
       });
     });
   }, []);
@@ -59,6 +62,7 @@ export function SettingsView() {
       bkash_number: f.bkash_number, whatsapp_number: f.whatsapp_number, facebook_url: f.facebook_url.trim(), instagram_url: f.instagram_url.trim(),
       exchange_line: f.exchange_line.trim(), policy_text: f.policy_text.trim(),
       courier_cost_inside: Number(f.courier_cost_inside), courier_cost_outside: Number(f.courier_cost_outside), addon_cost: Number(f.addon_cost),
+      capi_purchase_on: f.capi_purchase_on,
     }).eq("id", 1).select("id").single();
     setSaving(false);
     if (error) return setErrors({ form: error.message });
@@ -124,6 +128,28 @@ export function SettingsView() {
         <span className="muted small">These apply to new orders. Past orders keep the costs they were placed with.</span>
       </section>
 
+      <section className="adm-card">
+        <h2 className="adm-h2">Connections</h2>
+        <p className="muted small">Keys are kept in the hosting settings (Netlify), never here, so staff and visitors can't see them.</p>
+        <Conn name="Steadfast courier" ok={!!integrations?.steadfast.connected}
+          detail={integrations?.steadfast.error ? integrations.steadfast.error : integrations?.steadfast.balance !== undefined ? `Connected · balance ${taka(integrations.steadfast.balance)}` : undefined}
+          bad={!!integrations?.steadfast.error}
+          missing="Add STEADFAST_API_KEY and STEADFAST_SECRET_KEY in Netlify." />
+        <Conn name="Meta Pixel (browser)" ok={!!integrations?.meta.pixel} missing="Add NEXT_PUBLIC_META_PIXEL_ID in Netlify." />
+        <Conn name="Meta Conversions API (server)" ok={!!integrations?.meta.server}
+          detail={integrations?.meta.testMode ? "Test mode is on: events show under Test events in Events Manager. Remove META_TEST_EVENT_CODE when done." : undefined}
+          missing="Add META_CAPI_TOKEN in Netlify (and the Pixel ID)." />
+        <Conn name="SMS" ok={false} missing="Not set up yet. Choose an SMS provider first." />
+        <div className="field" style={{ paddingTop: 8 }}>
+          <span>Send the Purchase event to Meta</span>
+          <div className="adm-flags" role="radiogroup" aria-label="Send the Purchase event to Meta">
+            <label className="radio adm-radio"><input type="radio" name="capi" checked={f.capi_purchase_on === "confirmed"} onChange={() => set("capi_purchase_on", "confirmed")} /><span>When staff confirm the order (recommended)</span></label>
+            <label className="radio adm-radio"><input type="radio" name="capi" checked={f.capi_purchase_on === "placed"} onChange={() => set("capi_purchase_on", "placed")} /><span>As soon as the order is placed</span></label>
+          </div>
+          <span className="muted small">Sending on confirmation keeps fake orders out of your ad results. Meta gets the signal a few hours later.</span>
+        </div>
+      </section>
+
       {errors.form && <p className="notice" role="alert">{errors.form}</p>}
       {Object.keys(errors).some((k) => k !== "form") && <p className="err" role="alert">Please fix the fields marked above.</p>}
       {msg && <p className="adm-ok" role="status">{msg}</p>}
@@ -139,6 +165,15 @@ function F({ id, label, hint, error, children }: { id: string; label: string; hi
       {children}
       {hint && <span className="muted small">{hint}</span>}
       {error && <span className="err" role="alert">{error}</span>}
+    </div>
+  );
+}
+
+function Conn({ name, ok, detail, missing, bad }: { name: string; ok: boolean; detail?: string; missing: string; bad?: boolean }) {
+  return (
+    <div className="adm-conn">
+      <span className={`adm-tag ${ok && !bad ? "adm-st-delivered" : bad ? "adm-st-cancelled" : ""}`}>{ok && !bad ? "Connected" : bad ? "Problem" : "Not connected"}</span>
+      <div><strong style={{ fontWeight: 500 }}>{name}</strong><div className="muted small">{ok ? detail ?? "Ready." : missing}</div></div>
     </div>
   );
 }

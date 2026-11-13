@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { taka } from "@/lib/config";
-import { STATUS_LABEL, dhakaTime, supabase, type Role, type Status } from "@/lib/supabase-browser";
+import { COURIER_LABEL, STATUS_LABEL, dhakaTime, staffApi, supabase, type Role, type Status } from "@/lib/supabase-browser";
 
 type Row = {
   order_no: string;
@@ -16,6 +16,8 @@ type Row = {
   advance: number;
   on_delivery: number;
   advance_verified: boolean;
+  courier_status: string | null;
+  courier_tracking_code: string | null;
   order_items: { qty: number }[];
 };
 
@@ -27,7 +29,7 @@ const TABS: Record<Role, Status[]> = {
 };
 const PACKING_LABEL: Partial<Record<Status, string>> = { confirmed: "To pack", packed: "Packed" };
 
-export function OrdersView({ role, onOpen, refreshKey }: { role: Role; onOpen: (no: string) => void; refreshKey: number }) {
+export function OrdersView({ role, onOpen, refreshKey, onChanged, steadfast }: { role: Role; onOpen: (no: string) => void; refreshKey: number; onChanged: () => void; steadfast: boolean }) {
   const tabs = TABS[role];
   const [tab, setTab] = useState<Status>(tabs[0]);
   const [rows, setRows] = useState<Row[]>([]);
@@ -37,6 +39,35 @@ export function OrdersView({ role, onOpen, refreshKey }: { role: Role; onOpen: (
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [tick, setTick] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
+  const canCourier = steadfast && role !== "packing";
+
+  async function bookAll() {
+    const list = rows.filter((r) => r.status === "packed").map((r) => r.order_no);
+    if (!list.length || !window.confirm(`Send ${list.length} packed ${list.length === 1 ? "order" : "orders"} to Steadfast?`)) return;
+    setBusy(true); setNote(null);
+    try {
+      const r = await staffApi<{ results: { order: string; ok: boolean; message: string }[] }>("/api/courier/book", { method: "POST", body: JSON.stringify({ orders: list }) });
+      const ok = r.results.filter((x) => x.ok).length;
+      const bad = r.results.filter((x) => !x.ok);
+      setNote({ kind: bad.length ? "err" : "ok", text: `${ok} booked with Steadfast.${bad.length ? ` Not booked: ${bad.map((b) => `${b.order} (${b.message})`).join("; ")}` : ""}` });
+    } catch (e) {
+      setNote({ kind: "err", text: (e as Error).message });
+    }
+    setBusy(false); onChanged();
+  }
+
+  async function syncAll() {
+    setBusy(true); setNote(null);
+    try {
+      const r = await staffApi<{ checked: number; delivered: number; returned: number; failed: number }>("/api/courier/sync", { method: "POST", body: "{}" });
+      setNote({ kind: r.failed ? "err" : "ok", text: `Checked ${r.checked} parcels: ${r.delivered} delivered, ${r.returned} returned${r.failed ? `, ${r.failed} could not be checked` : ""}.` });
+    } catch (e) {
+      setNote({ kind: "err", text: (e as Error).message });
+    }
+    setBusy(false); onChanged();
+  }
 
   // Refresh every minute so new website orders appear without reloading.
   useEffect(() => {
@@ -51,7 +82,7 @@ export function OrdersView({ role, onOpen, refreshKey }: { role: Role; onOpen: (
       setLoading(true);
       let q = sb
         .from("orders")
-        .select("order_no,created_at,name,phone,area,status,has_preorder,total,advance,on_delivery,advance_verified,order_items(qty)")
+        .select("order_no,created_at,name,phone,area,status,has_preorder,total,advance,on_delivery,advance_verified,courier_status,courier_tracking_code,order_items(qty)")
         .order("created_at", { ascending: false })
         .limit(200);
       const s = query.trim().toUpperCase().replace(/[\s-]/g, "");
@@ -91,6 +122,13 @@ export function OrdersView({ role, onOpen, refreshKey }: { role: Role; onOpen: (
         </form>
       </div>
 
+      {canCourier && !query && tab === "packed" && rows.length > 0 && (
+        <div className="adm-bulk"><button className="adm-btn" disabled={busy} onClick={bookAll}>{busy ? "Sending…" : `Send all ${rows.length} to Steadfast`}</button></div>
+      )}
+      {canCourier && !query && tab === "shipped" && rows.length > 0 && (
+        <div className="adm-bulk"><button className="adm-btn-ghost" disabled={busy} onClick={syncAll}>{busy ? "Checking…" : "Update delivery status from Steadfast"}</button></div>
+      )}
+      {note && <p className={note.kind === "ok" ? "adm-ok" : "notice"} role="status" style={{ marginBottom: 12 }}>{note.text}</p>}
       {error && <p className="notice" role="alert">{error}</p>}
 
       <div className="adm-table-wrap">
@@ -115,6 +153,7 @@ export function OrdersView({ role, onOpen, refreshKey }: { role: Role; onOpen: (
                     {query && <span className="adm-tag">{STATUS_LABEL[r.status]}</span>}
                     {r.has_preorder && <span className="adm-tag adm-tag-pre">Pre-order</span>}
                     {r.advance > 0 && !r.advance_verified && <span className="adm-tag adm-tag-warn">Verify advance</span>}
+                    {r.courier_status && <span className="adm-tag">{COURIER_LABEL[r.courier_status] ?? r.courier_status}</span>}
                   </div>
                 </td>
               </tr>

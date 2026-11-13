@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { track } from "@/lib/pixel";
 import { taka, whatsappLink } from "@/lib/config";
 import type { Product } from "@/lib/products";
 import { useCart, useSettings } from "./cart-context";
@@ -17,6 +18,10 @@ export function ProductBuy({ product, pair }: { product: Product; pair?: Product
   const [qty, setQty] = useState(1);
   const [sizeError, setSizeError] = useState(false);
   const sizeRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    track("ViewContent", { content_ids: [product.slug], content_type: "product", content_name: product.name, value: product.price, currency: "BDT" });
+  }, [product.slug, product.name, product.price]);
 
   const pre = product.preorder;
   const soldOut = !pre && product.stock <= 0;

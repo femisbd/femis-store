@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { detail, lineKey, type CartLine, type DetailedLine } from "@/lib/order";
 import { defaultSettings, type Settings } from "@/lib/config";
 import { findProduct, type Product } from "@/lib/products";
+import { track } from "@/lib/pixel";
 
 type Cart = {
   ready: boolean;
@@ -48,6 +49,8 @@ export function CartProvider({ products, settings, children }: { products: Produ
   }, [raw, ready]);
 
   const add = useCallback((line: CartLine, openDrawer = true) => {
+    const p = findProduct(products, line.slug);
+    if (p) track("AddToCart", { content_ids: [p.slug], content_type: "product", content_name: p.name, value: p.price * line.qty, currency: "BDT" });
     setRaw((prev) => {
       const k = lineKey(line);
       const found = prev.find((l) => lineKey(l) === k);
@@ -55,7 +58,7 @@ export function CartProvider({ products, settings, children }: { products: Produ
       return [...prev, line];
     });
     if (openDrawer) setOpen(true);
-  }, []);
+  }, [products]);
   const setQty = useCallback((key: string, qty: number) => {
     setRaw((prev) => prev.map((l) => (lineKey(l) === key ? { ...l, qty: Math.max(1, Math.min(20, qty)) } : l)));
   }, []);

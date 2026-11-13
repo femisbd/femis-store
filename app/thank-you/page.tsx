@@ -2,19 +2,31 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useSettings } from "@/components/cart-context";
+import { track } from "@/lib/pixel";
 import { Shell } from "@/components/Shell";
 import { taka } from "@/lib/config";
 
 type Saved = { id: string; totals: { total: number; advance: number; onDelivery: number } };
+const FIRED = "femis-purchase-fired";
 
 export default function ThankYouPage() {
   const [order, setOrder] = useState<Saved | null>(null);
+  const { capiPurchaseOn } = useSettings();
   useEffect(() => {
     try {
       const raw = sessionStorage.getItem("femis-last-order");
-      if (raw) setOrder(JSON.parse(raw));
+      if (!raw) return;
+      const o = JSON.parse(raw) as Saved;
+      setOrder(o);
+      // In "placed" mode the browser also sends Purchase, with the order number as the shared event id,
+      // so Meta counts the browser and server events once.
+      if (capiPurchaseOn === "placed" && sessionStorage.getItem(FIRED) !== o.id) {
+        track("Purchase", { value: o.totals.total, currency: "BDT" }, o.id);
+        sessionStorage.setItem(FIRED, o.id);
+      }
     } catch {}
-  }, []);
+  }, [capiPurchaseOn]);
 
   return (
     <Shell>

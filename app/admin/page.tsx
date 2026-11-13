@@ -10,7 +10,7 @@ import { PreordersView } from "@/components/admin/PreordersView";
 import { ProductsView } from "@/components/admin/ProductsView";
 import { ProfitView } from "@/components/admin/ProfitView";
 import { SettingsView } from "@/components/admin/SettingsView";
-import { ROLE_LABEL, supabase, type Role } from "@/lib/supabase-browser";
+import { ROLE_LABEL, staffApi, supabase, type Integrations, type Role } from "@/lib/supabase-browser";
 
 type View = "orders" | "preorders" | "products" | "settings" | "profit";
 
@@ -22,6 +22,7 @@ export default function AdminPage() {
   const [view, setView] = useState<View>("orders");
   const [openOrder, setOpenOrder] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [integrations, setIntegrations] = useState<Integrations | null>(null);
 
   useEffect(() => {
     const sb = supabase();
@@ -44,6 +45,7 @@ export default function AdminPage() {
       .then(({ data }) => {
         setRole((data as Role | null) ?? null);
         setRoleLoaded(true);
+        if (data) staffApi<Integrations>("/api/integrations").then(setIntegrations).catch(() => {});
       });
   }, [session]);
 
@@ -83,13 +85,13 @@ export default function AdminPage() {
         </div>
       </header>
       <main className="adm-main">
-        {view === "orders" && <OrdersView role={role} onOpen={setOpenOrder} refreshKey={refreshKey} />}
+        {view === "orders" && <OrdersView role={role} onOpen={setOpenOrder} refreshKey={refreshKey} onChanged={refresh} steadfast={!!integrations?.steadfast.connected} />}
         {view === "preorders" && <PreordersView onOpen={setOpenOrder} refreshKey={refreshKey} />}
         {view === "products" && role === "owner" && <ProductsView />}
         {view === "profit" && role === "owner" && <ProfitView />}
-        {view === "settings" && role === "owner" && <SettingsView />}
+        {view === "settings" && role === "owner" && <SettingsView integrations={integrations} />}
       </main>
-      {openOrder && <OrderPanel orderNo={openOrder} role={role} onClose={() => setOpenOrder(null)} onChanged={refresh} />}
+      {openOrder && <OrderPanel orderNo={openOrder} role={role} onClose={() => setOpenOrder(null)} onChanged={refresh} integrations={integrations} />}
     </>
   );
 }
